@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-> **Status:** Phase 1, 2A–2E and 6 locked. Phase 3, 4, 5 next.
+> **Status:** Phase 1, 2A–2E, 6 and 3.A locked. Phase 3.B–3.E, 4, 5 next.
 > **Last updated:** 2026-05-16
 
 This roadmap turns the locked architecture into an executable plan.
@@ -33,10 +33,34 @@ This roadmap turns the locked architecture into an executable plan.
 | 2D | Domain events, consumers, sagas | ✅ Locked |
 | 2E | Database schema (68 tables + 5 mviews) | ✅ Locked |
 | **6** | **Tech stack selection (9 sub-phases)** | **✅ Locked** |
-| 3 | Screen wireframes (text-mockups) | Next |
+| 3 | Screen wireframes (text-mockups, 5 sub-phases) | In progress (3.A locked) |
 | 4 | Backend architecture detail (module-by-module) | After Phase 3 |
 | 5 | API endpoint catalogue + OpenAPI | After Phase 4 |
 | 7 | Implementation (12 sprints) | After Phase 5 |
+
+### Phase 3 sub-phases
+
+| Sub-phase | Topic | Status |
+|---|---|---|
+| **3.A** | **POS Flow (7 screens: main sale, search, customer, discount, payment, terminal-pending, completion)** | **✅ Locked** |
+| 3.B | Catalog Management (product list, create/edit, variant matrix, pricing, attributes) | Next |
+| 3.C | Inventory Operations (stock list, transfer, count, adjustment) | After 3.B |
+| 3.D | Financial Flows (purchase invoice, return/exchange, payment collection, account detail) | After 3.C |
+| 3.E | Operational/Admin (cash close + Z report, user/role admin, tenant flags, basic reports) | After 3.D |
+
+### Phase 3.A deliverables (locked, this milestone)
+
+| Screen | Doc |
+|---|---|
+| 3.A.1 | POS Main Sale | `screens/pos/3a1-main-sale.md` |
+| 3.A.2 | Product Search Modal (F1) | `screens/pos/3a2-product-search.md` |
+| 3.A.3 | Customer Select Modal (F2) + Quick Create | `screens/pos/3a3-customer-select.md` |
+| 3.A.4 | Discount Modal (F3) | `screens/pos/3a4-discount.md` |
+| 3.A.5 | Payment Screen | `screens/pos/3a5-payment.md` |
+| 3.A.6 | Terminal Pending / Recovery | `screens/pos/3a6-terminal-pending.md` |
+| 3.A.7 | Completion / Receipt | `screens/pos/3a7-completion.md` |
+| Index | Locked decisions catalog + schema additions + API endpoints | `screens/pos/README.md` |
+| Migration | POS extensions consolidated | `migrations/018_pos_extensions.sql` |
 
 ### Phase 6 deliverables (locked, this milestone)
 
