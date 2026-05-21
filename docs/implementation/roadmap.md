@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-> **Status:** Phase 1, 2A–2E, 6, 3.A, 3.B, 3.C, 3.D, 3.E locked. Phase 3 COMPLETE. Phase 4, 5 next.
+> **Status:** Phase 1, 2A–2E, 6, 3.A, 3.B, 3.C, 3.D, 3.E, 3.F, 4 locked. Phase 5, 7 next.
 > **Last updated:** 2026-05-21
 
 This roadmap turns the locked architecture into an executable plan.
@@ -34,9 +34,9 @@ This roadmap turns the locked architecture into an executable plan.
 | 2E | Database schema (68 tables + 5 mviews) | ✅ Locked |
 | **6** | **Tech stack selection (9 sub-phases)** | **✅ Locked** |
 | **3** | **Screen wireframes (text-mockups, 5 sub-phases)** | **✅ COMPLETE (31 screens)** |
-| 4 | Backend architecture detail (module-by-module) | Next |
-| 5 | API endpoint catalogue + OpenAPI | After Phase 4 |
-| 7 | Implementation (12 sprints) | After Phase 5 |
+| **4** | **Module Contracts (lean: matrix + per-module ~1 page)** | **✅ Locked** |
+| 5 | API endpoint catalogue + OpenAPI skeleton | Next |
+| 7 | Implementation (sprints) | After Phase 5 |
 
 ### Phase 3 sub-phases — COMPLETE
 
@@ -155,39 +155,22 @@ This roadmap turns the locked architecture into an executable plan.
 
 ## What comes next
 
-### Phase 4 — Module Contracts (LEAN scope)
+### Phase 4 — Module Contracts ✅ LOCKED 2026-05-21
 
-> **Scope rationale:** Phase 3 already specifies aggregate ownership, state machines, transaction boundaries, and endpoint semantics per screen. Phase 4 is NOT a re-spec; it's the **module boundary lock** that ArchUnit will enforce. Avoid 30-page module specs; aim for ~1 page per module.
+Delivered (`docs/architecture/04-module-contracts.md` + `docs/architecture/modules/`):
 
-Deliverable (~15-18 pages total):
+1. **Module list + Bounded Context mapping** — 10 modules; identity.tenant, sales.returns, reporting.audit as sub-packages
+2. **Module Dependency Matrix** (CENTRAL ARTIFACT) — W / Q / Q+W / ✗ notation; 10×10 grid; rules per cell
+3. **Cross-module orchestration discipline** — explicit at originator; no nested chains; ArchUnit Kategori C enforced
+4. **ArchUnit rule samples** — 5 categories, ~23 rules total
+5. **Per-module spec** — 10 × ~1 page covering aggregate roots, package structure, transaction ownership, outbox events, ArchUnit refs, cache hooks, key invariants, public API surface
+6. **Shared kernel** — allowlist enforced; pagination in isolated sub-package
 
-1. **Module list + Bounded Context mapping** (~1 page)
-2. **Module Dependency Matrix** (CENTRAL ARTIFACT, ~1-2 pages)
-   - Rows: 10 modules
-   - Columns: can-depend-on-write / can-depend-on-query-only / cannot-depend-on
-   - Each row maps to ArchUnit rules
-3. **Per-module spec** (10 × ~1 page = 10-12 pages)
-   - Package structure (`com.linxa.{module}.{subpackage}/`)
-   - Aggregate roots (list, with reference to Phase 2B invariants)
-   - Service layer split (Application vs Domain)
-   - Repository interface contracts
-   - Transaction ownership (@Transactional placement rules)
-   - Outbox events emitted/consumed
-   - ArchUnit rules (with comments referencing matrix row)
-   - Cache invalidation hooks
-4. **Shared kernel + cross-cutting** (~1-2 pages)
-   - Money, TenantId, IdempotencyKey, CorrelationId
-   - Common DTOs (PageRequest, ErrorResponse)
-   - Event base interface
-   - TenantAwareTransactionManager (already in Phase 6.B)
+ADR-021 (Module Dependency Matrix as Engineering Contract) ratifies the matrix as a versioned engineering contract.
 
-**Not in Phase 4 scope:**
-- Aggregate root implementation code (Phase 7)
-- Full service method signatures (Phase 7)
-- Database query implementations (Phase 7)
-- Detailed DTO field definitions (Phase 5)
+Package prefix `io.stockapp` (placeholder until brand decision in Phase 7). ArchUnit patterns use double-dot wildcards (`..identity..`); rename requires only Maven groupId change.
 
-### Phase 5 — Endpoint Catalogue + OpenAPI Skeleton (LEAN scope)
+### Phase 5 — Endpoint Catalogue + OpenAPI Skeleton (LEAN scope) — NEXT
 
 > **Scope rationale:** Phase 3 already lists every endpoint with method, path, auth, idempotency. Phase 5 catalogues them in one place + generates OpenAPI skeleton. Full DTO property definitions emerge from JPA entities at Phase 7.
 
@@ -211,7 +194,18 @@ Deliverable:
 
 ### Phase 7 — Implementation sprints
 
-Claude Code-driven sprint plan. Sprint 1: repository skeleton + Identity module. Subsequent sprints follow domain dependency order (Catalog → Inventory → Pricing → Sales/POS → Purchasing → Finance → Cash → Reporting → Admin).
+Sprint order follows dependency hierarchy bottom-up:
+
+1. `shared` kernel (no deps)
+2. `identity` (root)
+3. `catalog`
+4. `pricing` + `inventory` (parallel; both depend only on identity + catalog)
+5. `purchasing`
+6. `sales` (largest; orchestrates)
+7. `finance` + `cashregister`
+8. `reporting` (read-only; last)
+
+Spring Modulith integration tests verify module boundaries hold throughout. ArchUnit runs in every commit's test suite.
 
 ---
 
@@ -239,6 +233,7 @@ Claude Code-driven sprint plan. Sprint 1: repository skeleton + Identity module.
 | 018 | Pricing Resolution Strategy | 3.B |
 | 019 | Display Name Composition Strategy | 3.B |
 | **020** | **Correlation ID Pattern** | **3.C** |
+| **021** | **Module Dependency Matrix as Engineering Contract** | **4** |
 
 ---
 
@@ -376,13 +371,11 @@ No deny rules. No override semantics. Multi-role is purely additive in MVP. This
 
 ## Phase 3 status — kapanış
 
-Phase 3 design phase is closed. 31 screens, 5 sub-phases, 3 ADRs net new (018-020). Phase 3.F refinements (8 corrections) applied 2026-05-21.
+Phase 3 design phase closed 2026-05-21. 31 screens, 5 sub-phases, 3 ADRs net new (018-020). Phase 3.F refinements (8 corrections) applied 2026-05-21.
 
-**Next milestone**: Phase 4 — Module Contracts (focused scope per Phase 4 lean approach):
-- Module list + bounded context mapping
-- **Module dependency matrix** (central artifact)
-- Per-module spec (~1 page each: package structure, aggregate roots, service split, transaction ownership, outbox events, ArchUnit rules)
-- Shared kernel + cross-cutting
+**Phase 4 LOCKED 2026-05-21.** Module Contracts delivered as `docs/architecture/04-module-contracts.md` (central) + 10 per-module specs in `docs/architecture/modules/`. ADR-021 ratifies the dependency matrix.
 
-After Phase 4: Phase 5 endpoint catalogue + OpenAPI skeleton, then direct to Phase 7 implementation (Claude Code).
+**Next milestone**: Phase 5 — Endpoint Catalogue + OpenAPI skeleton (LEAN scope).
+
+After Phase 5: direct to Phase 7 implementation (Claude Code, sprint-based).
 
