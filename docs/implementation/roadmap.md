@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-> **Status:** Phase 1, 2A–2E, 6 and 3.A locked. Phase 3.B–3.E, 4, 5 next.
+> **Status:** Phase 1, 2A–2E, 6, 3.A and 3.B locked. Phase 3.C–3.E, 4, 5 next.
 > **Last updated:** 2026-05-16
 
 This roadmap turns the locked architecture into an executable plan.
@@ -33,7 +33,7 @@ This roadmap turns the locked architecture into an executable plan.
 | 2D | Domain events, consumers, sagas | ✅ Locked |
 | 2E | Database schema (68 tables + 5 mviews) | ✅ Locked |
 | **6** | **Tech stack selection (9 sub-phases)** | **✅ Locked** |
-| 3 | Screen wireframes (text-mockups, 5 sub-phases) | In progress (3.A locked) |
+| 3 | Screen wireframes (text-mockups, 5 sub-phases) | In progress (3.A + 3.B locked) |
 | 4 | Backend architecture detail (module-by-module) | After Phase 3 |
 | 5 | API endpoint catalogue + OpenAPI | After Phase 4 |
 | 7 | Implementation (12 sprints) | After Phase 5 |
@@ -42,11 +42,26 @@ This roadmap turns the locked architecture into an executable plan.
 
 | Sub-phase | Topic | Status |
 |---|---|---|
-| **3.A** | **POS Flow (7 screens: main sale, search, customer, discount, payment, terminal-pending, completion)** | **✅ Locked** |
-| 3.B | Catalog Management (product list, create/edit, variant matrix, pricing, attributes) | Next |
-| 3.C | Inventory Operations (stock list, transfer, count, adjustment) | After 3.B |
+| **3.A** | **POS Flow (7 screens)** | **✅ Locked** |
+| **3.B** | **Catalog Management (5 + 1 secondary screens: product list, create/edit, variant matrix, pricing, attributes, missing items)** | **✅ Locked** |
+| 3.C | Inventory Operations (stock list, transfer, count, adjustment) | Next |
 | 3.D | Financial Flows (purchase invoice, return/exchange, payment collection, account detail) | After 3.C |
 | 3.E | Operational/Admin (cash close + Z report, user/role admin, tenant flags, basic reports) | After 3.D |
+
+### Phase 3.B deliverables (locked, this milestone)
+
+| Screen | Doc |
+|---|---|
+| 3.B.1 | Product List | `screens/catalog/3b1-product-list.md` |
+| 3.B.2 | Product Create/Edit | `screens/catalog/3b2-product-edit.md` |
+| 3.B.3 | Variant Matrix Builder | `screens/catalog/3b3-variant-matrix.md` |
+| 3.B.4 | Pricing Screen | `screens/catalog/3b4-pricing.md` |
+| 3.B.5 | Attribute Configuration | `screens/catalog/3b5-attributes.md` |
+| 3.B.6 | Missing Item Requests (secondary tab) | `screens/catalog/3b6-missing-items.md` |
+| Index | Locked decisions + schema + API endpoints | `screens/catalog/README.md` |
+| ADR-018 | Pricing Resolution Strategy | `adr/018-pricing-resolution-strategy.md` |
+| ADR-019 | Display Name Composition Strategy | `adr/019-display-name-composition.md` |
+| Migration | Catalog extensions consolidated | `migrations/019_catalog_extensions.sql` |
 
 ### Phase 3.A deliverables (locked, this milestone)
 

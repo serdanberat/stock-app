@@ -1,0 +1,319 @@
+# 3.B.3 — Variant Matrix Builder
+
+> **Status:** Locked (Phase 3.B)
+> **Route:** `/catalog/products/{productId}/variants`
+
+## Purpose
+
+Generate and manage ProductVariants for a Product. Variant = Product + axis combination (Color × Size). Each variant has own SKU, barcode, price, stock.
+
+Boutique products typically have 10-40 variants. Bulk generation is essential.
+
+## Aggregate ownership (explicit)
+
+- **Writes** ProductVariant aggregate
+- **Does NOT write**: Stock (Inventory ctx) or Price (Pricing ctx — 3.B.4)
+- Initial stock = 0 always
+- Manager goes to Inventory to set opening stock
+
+## Two modes
+
+- **BUILDER mode**: 2-axis matrix generator (Color × Size)
+- **LIST mode**: Flat list of existing variants
+
+Toggle via segmented control.
+
+## Reads
+
+- `GET /catalog/products/{id}/variants` — Variant list with attributes, SKU, barcode, is_active, sales_count
+- `GET /catalog/attributes?type_id={typeId}&type_system_key=COLOR` — Tenant's color palette
+- `GET /catalog/attributes?type_id={typeId}&type_system_key=SIZE` — Size palette
+
+## Writes (BUILDER mode)
+
+Two-step flow:
+
+- `POST /catalog/products/{id}/variants/preview-generate`
+  - Body: `{ color_attribute_ids[], size_attribute_ids[], sku_pattern, skip_existing }`
+  - Returns: would-be variants list with computed SKUs/barcodes, collisions detected, skip reasons
+- `POST /catalog/products/{id}/variants/commit-generate`
+  - Body: `{ idempotency_key, confirmed_variants[] }`
+  - Server validates: pattern resolvable; no SKU collisions; commits atomically
+
+## Writes (LIST mode)
+
+- `PATCH /catalog/variants/{variantId}` — SKU/barcode/attributes edit
+- `POST /catalog/variants/{variantId}/deactivate` — Soft delete
+- `POST /catalog/variants/{variantId}/reactivate`
+
+## Optimistic UI
+
+- Per-row edit in LIST mode: yes (rollback toast on failure)
+- Bulk generate: NO (server validates collisions; awaits preview)
+
+## Locking
+
+- Bulk generate: SERIALIZABLE isolation per Phase 6.B (sequence-allocator)
+- Per-row edit: optimistic version
+
+## Draft autosave
+
+NO. Builder requires explicit Preview + Commit. List edits explicit.
+
+## Keyboard flow
+
+### BUILDER mode
+
+| Key | Action |
+|---|---|
+| Tab | color multiselect → size multiselect → SKU pattern → Preview |
+| `Ctrl+G` | Preview |
+| `Ctrl+Enter` | Commit (after Preview) |
+
+### LIST mode
+
+| Key | Action |
+|---|---|
+| `↓ / ↑` | Navigate row |
+| `Enter` | Edit focused row inline |
+| `Esc` | Cancel inline edit |
+| `Ctrl+D` | Deactivate focused (confirm) |
+| `/` | Focus search |
+
+## Barcode flow
+
+Scanner ACTIVE on this screen.
+
+- Scanning matches existing variant in this product → highlight row
+- Scanning matches variant in OTHER product → toast "Bu barkod {other product} ürününde kullanılıyor"
+- Unknown barcode in LIST mode with focused row → inline "Bu barkodu seçili varyantına ata?" button
+
+Use case: physical inventory verification, supplier barcode adoption.
+
+## Speed budget
+
+| Action | p95 target |
+|---|---|
+| Builder preview (typical 4×5 = 20) | < 500ms |
+| Builder preview (large 10×10 = 100) | < 1500ms |
+| Commit (20 variants) | < 1s |
+| Commit (100 variants) | < 3s |
+| Per-row inline edit | < 400ms |
+
+Above 200 in single commit: warning. Hard limit 500.
+
+## Permissions
+
+| Permission | Default |
+|---|---|
+| `catalog.variants.create` | STORE_MANAGER+ |
+| `catalog.variants.edit` | STORE_MANAGER+ |
+| `catalog.variants.deactivate` | STORE_MANAGER+ |
+| `catalog.variants.change_sku_after_sale` | STORE_MANAGER+ with sale-history warning |
+| `catalog.variants.change_barcode_after_sale` | STORE_MANAGER+ with sale-history warning |
+| `catalog.variants.change_barcode` | Separate; barcode = operational identity |
+
+## Mutability after first completed sale
+
+| Field | After sale |
+|---|---|
+| SKU | Manager warning (permission gated) |
+| Barcode | Manager warning (permission gated) |
+| Attributes (color/size) | **Immutable** (no permission override) |
+| is_active | Freely editable |
+| photo | Freely editable |
+
+Server enforces via `ProductVariant.assertAttributeChangeAllowed()`. To change attributes after sale: create new variant + deactivate old.
+
+`completed_sales_count` checked via lazy query MVP (no materialized counter).
+
+## SKU pattern engine
+
+Default: `{code}-{color}-{size}`
+
+Variables (server-resolved):
+- `{code}` — Product code
+- `{color}` — Color attribute's `short_code` (e.g. "BLK")
+- `{size}` — Size attribute's `short_code` (e.g. "M")
+- `{seq}` — Sequential (rare; for products without color/size)
+
+Custom patterns allowed: `{code}-{size}-{color}`, `{code}_{color}{size}`
+
+Validation:
+- All variables resolvable
+- Result valid SKU format (alphanumeric + - _, max 64 chars)
+- Globally unique per tenant
+
+## Barcode generation
+
+**MVP strategy**: global opaque sequential allocator.
+
+- Format: `V{seq:0>10}` (e.g. `V0000004721`)
+- No tenant prefix (avoids operational leak)
+- Generated by dedicated sequence allocator (SERIALIZABLE isolation, Phase 6.B)
+- **Global UNIQUE** constraint (cross-tenant) for future flexibility
+
+User can override per variant with manual barcode in LIST mode (e.g. supplier barcode "8690123456789"):
+- Globally unique per tenant
+- Length 8-32
+- Alphanumeric
+
+Format validation deferred: MVP stores arbitrary string. EAN-13/Code128 strict validation v1.1+ (GS1 integration).
+
+## Variant display_name (denormalized)
+
+`product_variants.display_name` cached field for fast POS render + receipt + search.
+
+Format: `"{product.display_name} / {color.display_name} / {size.display_name}"`
+Example: `"T-shirt Basic / Siyah / M"`
+
+**Composition strategy**: Java-side `VariantDisplayNameComposer` (NOT DB function). See ADR-019.
+
+Refresh strategy: event-driven eager update via outbox:
+- `ProductDisplayNameChangedV1` → refresh all variants of product
+- `AttributeDisplayNameChangedV1` → refresh all variants using attribute
+- Eventually consistent ~1-2s
+
+GIN trgm index on `display_name` for search performance.
+
+## Skip reason enum (preview output)
+
+| Code | Meaning |
+|---|---|
+| SKIP_EXISTING_SKU | SKU collision with existing variant |
+| SKIP_EXISTING_ATTR_COMBINATION | This color×size combination already exists |
+| SKIP_EXISTING_BARCODE | Manual barcode collision (rare) |
+| SKIP_INVALID_PATTERN | SKU pattern unresolvable for this specific row |
+| SKIP_GENERATION_LIMIT | 500 hard limit exceeded |
+
+Preview response per-row reasons enable debugging without server logs.
+
+## Layout — BUILDER mode
+
+```
+┌─ Catalog Shell > Product Edit > Variants ─────────────────────────┐
+│  [← Geri to Product]    T-shirt Basic / Varyantlar                │
+│  Mode: [Oluşturucu]  [Liste]                                       │
+├───────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│  Renkler:                                                          │
+│  ☑ Siyah (BLK)  ☑ Beyaz (WHT)  ☑ Kırmızı (RED)  ☑ Mavi (BLU)     │
+│  [+ Renk Ekle]                                                    │
+│                                                                    │
+│  Bedenler:                                                         │
+│  ☑ S  ☑ M  ☑ L  ☑ XL  ☐ XXL                                       │
+│  [+ Beden Ekle]                                                   │
+│                                                                    │
+│  SKU Şablonu:                                                      │
+│  [{code}-{color}-{size}]   Önizleme: T-100-BLK-S                  │
+│                                                                    │
+│  Üretilecek varyant sayısı: 16  (4 renk × 4 beden)                │
+│                                                                    │
+│  Mevcut SKU çakışmaları olursa atlanır.                            │
+│  ☑ Mevcutları atla                                                │
+│                                                                    │
+│  [Önizle (Ctrl+G)]                                                │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+## Layout — Preview (intermediate state)
+
+```
+┌─ Önizleme: 16 varyant oluşturulacak ─────────────────────────────┐
+│                                                                    │
+│  Yeni: 14    Atlanacak: 2    Çakışma: 0                          │
+│                                                                    │
+│  ┌─ Yeni varyantlar ─────────────────────────────────────────┐  │
+│  │ SKU              Barkod (otomatik)         Renk  / Beden   │  │
+│  │ T-100-BLK-S     V0000004721              Siyah / S        │  │
+│  │ T-100-BLK-M     V0000004722              Siyah / M        │  │
+│  │ T-100-BLK-L     V0000004723              Siyah / L        │  │
+│  │ ... (showing 5, +9 more)                                   │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                                                                    │
+│  ┌─ Atlanacak (mevcut SKU) ─ Sebep ──────────────────────────┐  │
+│  │ T-100-WHT-S — SKIP_EXISTING_ATTR_COMBINATION              │  │
+│  │   "Bu renk/beden kombinasyonu mevcut variant_id ab-12'de" │  │
+│  │ T-100-WHT-M — SKIP_EXISTING_SKU                            │  │
+│  │   "Bu SKU başka varyantında kullanılıyor: variant_id ab-13"│  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                                                                    │
+│  [İptal]                            [Oluştur (Ctrl+Enter)]        │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+## Layout — LIST mode
+
+```
+┌─ Catalog Shell > Product Edit > Variants ─────────────────────────┐
+│  Mode: [Oluşturucu]  [Liste]                                       │
+├───────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│  ⌕ [Search SKU or barcode]                  Filter: [Aktif ▾]    │
+│                                                                    │
+│  ┌─ Variants table ──────────────────────────────────────────┐  │
+│  │ SKU            │ Barkod        │ Renk │ Beden │ Toplam* │ │  │
+│  ├────────────────┼───────────────┼──────┼───────┼─────────┤│  │
+│  │ T-100-BLK-S    │ V0000004721   │ Siyah│ S     │   5     ││  │
+│  │ T-100-BLK-M    │ V0000004722   │ Siyah│ M     │   8     ││  │
+│  │ T-100-BLK-L    │ V0000004723   │ Siyah│ L     │   4     ││  │
+│  │ T-100-WHT-S    │ V0000004724   │ Beyaz│ S     │   3     ││  │
+│  │ T-100-RED-S 🚫 │ V0000004728   │ Kırm.│ S     │   0     ││  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                                                                    │
+│  * Toplam yaklaşık stok (tüm mağazalar)                            │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+## Layout — Inline edit (LIST mode row expansion)
+
+```
+┌─ T-100-BLK-S inline edit ─────────────────────────────────────┐
+│  SKU: [T-100-BLK-S]                                            │
+│  Barkod: [V0000004721]  [Yeni Otomatik]                        │
+│  Renk: [Siyah ▾]  Beden: [S ▾]                                 │
+│  Aktif: [☑]                                                    │
+│  [İptal]  [Kaydet]                                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Note: If variant has completed sales, "Renk" and "Beden" fields are read-only with lock icon + tooltip: "Satış sonrası attributeları değiştirilemez. Yeni varyant oluşturup eskisini pasife alın."
+
+## Edge cases
+
+| # | Scenario | Behavior |
+|---|---|---|
+| 1 | No colors/sizes for tenant | Builder shows "Önce renk veya beden tanımı yapın. [3.B.5'e git]" link |
+| 2 | Mid-generation network failure | Idempotency key prevents partial double-create on retry |
+| 3 | SKU pattern with unresolvable variable | Preview server 422 + UI inline error on pattern input |
+| 4 | SKU collision with another product | Detected in preview; "Çakışma" section; user changes pattern or skips |
+| 5 | Bulk generate >200 variants | Warning modal "Çok büyük matris"; 500 hard limit |
+| 6 | Variant has sales — try attribute change | Server rejects with `VariantImmutableException`; UI shows lock icon |
+| 7 | Deactivate variant with stock | Soft delete; confirm shows count; existing stock stays sellable |
+| 8 | Scanner unknown barcode in LIST mode | Inline "Bu barkodu seçili varyantına ata?" button (only if row focused) |
+| 9 | Empty matrix product (new) | Builder opens default; LIST shows "Henüz varyant yok" |
+| 10 | Concurrent generate (two managers) | First commit succeeds; second sees collision via skip_existing |
+
+## Audit events
+
+- `variant_matrix_generated` (product_id, count, actor)
+- `variant_created`
+- `variant_sku_changed_after_sale`
+- `variant_barcode_changed_after_sale`
+- `variant_attributes_change_blocked` (server rejection)
+- `variant_deactivated`
+- `variant_reactivated`
+
+## Implementation notes
+
+- Builder uses Mantine MultiSelect for color/size pickers
+- LIST mode virtualized above 50 rows (TanStack Virtual)
+- Preview is full-page intermediate state (not modal); matrix can have 200+ rows
+- Inline edit: Mantine inline editing pattern (row expands)
+- SKU pattern validation: client + server, debounce 250ms
+- Barcode generator: sequence-allocator pattern (Phase 6.B)
+- `display_name` projection refresh: outbox-driven via `VariantDisplayNameComposer` (Java) — see ADR-019
+- "Toplam Stok" column uses same projection disclosure as 3.B.1
