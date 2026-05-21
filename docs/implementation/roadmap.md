@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-> **Status:** Phase 1, 2A–2E, 6, 3.A, 3.B, 3.C, 3.D, 3.E, 3.F, 4 locked. Phase 5, 7 next.
+> **Status:** Phase 1, 2A–2E, 6, 3.A, 3.B, 3.C, 3.D, 3.E, 3.F, 4, 5 locked. Phase 7 next.
 > **Last updated:** 2026-05-21
 
 This roadmap turns the locked architecture into an executable plan.
@@ -35,8 +35,8 @@ This roadmap turns the locked architecture into an executable plan.
 | **6** | **Tech stack selection (9 sub-phases)** | **✅ Locked** |
 | **3** | **Screen wireframes (text-mockups, 5 sub-phases)** | **✅ COMPLETE (31 screens)** |
 | **4** | **Module Contracts (lean: matrix + per-module ~1 page)** | **✅ Locked** |
-| 5 | API endpoint catalogue + OpenAPI skeleton | Next |
-| 7 | Implementation (sprints) | After Phase 5 |
+| **5** | **Endpoint Catalogue + OpenAPI Skeleton (lean)** | **✅ Locked** |
+| 7 | Implementation (sprints) | Next |
 
 ### Phase 3 sub-phases — COMPLETE
 
@@ -170,29 +170,26 @@ ADR-021 (Module Dependency Matrix as Engineering Contract) ratifies the matrix a
 
 Package prefix `io.stockapp` (placeholder until brand decision in Phase 7). ArchUnit patterns use double-dot wildcards (`..identity..`); rename requires only Maven groupId change.
 
-### Phase 5 — Endpoint Catalogue + OpenAPI Skeleton (LEAN scope) — NEXT
+### Phase 5 — Endpoint Catalogue + OpenAPI Skeleton ✅ LOCKED 2026-05-21
 
-> **Scope rationale:** Phase 3 already lists every endpoint with method, path, auth, idempotency. Phase 5 catalogues them in one place + generates OpenAPI skeleton. Full DTO property definitions emerge from JPA entities at Phase 7.
+Delivered (`docs/api/`):
 
-Deliverable:
+1. **`05-api-conventions.md`** — URL patterns, PATCH-vs-Action split, NO hard delete policy, RFC 7807 error format, errorCode namespacing (INV_, SALE_, FIN_, etc.), pagination shape, idempotency rules, correlation-id header, manager PIN override flow
+2. **`05-endpoint-catalogue.md`** — ~174 endpoints across 10 modules; method, path, permission, idempotency, request/response DTO names, Phase 3 screen refs
+3. **`openapi.yaml`** — OpenAPI 3.1.0 skeleton; common schemas (Problem, PageRequest, Money, Percentage), security scheme (JWT bearer), tag groups, illustrative path entries for critical endpoints (login, sale completion, purchase invoice commit, transfer dispatch/receive, cash open/close, return finalize, pricing resolve)
 
-1. **Endpoint Catalogue table** (~120 endpoints across modules)
-   - Method + path
-   - Auth/permission codes
-   - Idempotency (yes/no)
-   - Request DTO name (e.g. `CreatePurchaseInvoiceRequest`)
-   - Response DTO name
-   - Phase 3 screen reference
-2. **OpenAPI skeleton**
-   - Paths section (method + path + permission tag)
-   - Schemas section (DTO names only; properties marked `TODO at implementation`)
-   - Tag groups (pos, catalog, inventory, finance, admin)
+ADR-022 (API Conventions) ratifies the convention set.
 
-**Not in Phase 5 scope:**
-- Full property-level OpenAPI schemas (generated from JPA at Phase 7)
-- Example payloads (Phase 7 with real fixtures)
+Phase 5 LEAN scope honored: endpoint catalogue + skeleton; full DTO property definitions deferred to Phase 7 (generated from JPA entities via springdoc-openapi).
 
-### Phase 7 — Implementation sprints
+Key conventions:
+- **NO `DELETE` endpoints** — all soft state transitions
+- **PATCH for field mutation, POST /{action} for lifecycle**
+- **X-Idempotency-Key on every POST create + lifecycle action**
+- **X-Correlation-Id** auto-generated server-side; always echoed
+- **RFC 7807** with stable `type` URLs + module-namespaced `errorCode`
+
+### Phase 7 — Implementation sprints — NEXT
 
 Sprint order follows dependency hierarchy bottom-up:
 
@@ -234,6 +231,7 @@ Spring Modulith integration tests verify module boundaries hold throughout. Arch
 | 019 | Display Name Composition Strategy | 3.B |
 | **020** | **Correlation ID Pattern** | **3.C** |
 | **021** | **Module Dependency Matrix as Engineering Contract** | **4** |
+| **022** | **API Conventions** | **5** |
 
 ---
 
@@ -375,7 +373,15 @@ Phase 3 design phase closed 2026-05-21. 31 screens, 5 sub-phases, 3 ADRs net new
 
 **Phase 4 LOCKED 2026-05-21.** Module Contracts delivered as `docs/architecture/04-module-contracts.md` (central) + 10 per-module specs in `docs/architecture/modules/`. ADR-021 ratifies the dependency matrix.
 
-**Next milestone**: Phase 5 — Endpoint Catalogue + OpenAPI skeleton (LEAN scope).
+**Phase 5 LOCKED 2026-05-21.** Endpoint Catalogue + OpenAPI Skeleton delivered as `docs/api/05-api-conventions.md` + `docs/api/05-endpoint-catalogue.md` + `docs/api/openapi.yaml`. ADR-022 ratifies the API conventions.
 
-After Phase 5: direct to Phase 7 implementation (Claude Code, sprint-based).
+**Design phase COMPLETE.** All artifacts in place for Phase 7 implementation.
+
+**Next milestone**: Phase 7 — Implementation sprints. Bottom-up dependency order: shared → identity → catalog → pricing+inventory → purchasing → sales → finance+cashregister → reporting.
+
+Recommended pre-implementation steps (parallel to sprint planning):
+- 2-3 boutique sahibiyle Phase 3 ekran review (validation)
+- Brand decision for io.stockapp placeholder
+- Beta tenant recruitment (≥3 stores)
+- Pricing tier finalization (competitor research)
 

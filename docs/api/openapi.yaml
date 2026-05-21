@@ -1,0 +1,1318 @@
+openapi: 3.1.0
+info:
+  title: stockapp API
+  version: 0.1.0-mvp
+  description: |
+    Multi-tenant retail POS/ERP API for clothing/boutique/jewelry stores.
+    
+    **Phase 5 status**: skeleton (paths + schema names; properties to be detailed in Phase 7).
+    
+    **Conventions**: see `docs/api/05-api-conventions.md`.
+    - All write endpoints require `X-Idempotency-Key` header (UUID).
+    - All responses include `X-Correlation-Id` header.
+    - Errors use RFC 7807 `application/problem+json`.
+    - Authentication: JWT Bearer (`Authorization: Bearer <token>`).
+    - Tenant isolation enforced via JWT claim → RLS context.
+  contact:
+    name: stockapp
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.stockapp.example/v1
+    description: Production (placeholder)
+  - url: http://localhost:8080
+    description: Local development
+
+# ============================================================================
+# Security
+# ============================================================================
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT issued by `/auth/login`. HS256 per ADR-013.
+        15min access token; refresh via `/auth/refresh`.
+
+  # ==========================================================================
+  # Common parameters
+  # ==========================================================================
+  parameters:
+    IdempotencyKey:
+      name: X-Idempotency-Key
+      in: header
+      required: true
+      description: |
+        Client-generated UUIDv4. Required for write-consequential endpoints.
+        7-day retention. Same key returns cached response.
+      schema:
+        type: string
+        format: uuid
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: |
+        Optional client-supplied correlation ID for request tracing.
+        If absent, server generates one. Always echoed in response.
+      schema:
+        type: string
+        format: uuid
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  # ==========================================================================
+  # Common response shapes
+  # ==========================================================================
+  responses:
+    ProblemResponse:
+      description: Error per RFC 7807
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NoContent:
+      description: Success with no body
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: Uniqueness or concurrency conflict
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnprocessableEntity:
+      description: Domain rule violation
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  # ==========================================================================
+  # Common schemas
+  # ==========================================================================
+  schemas:
+    # ----- Error model (RFC 7807) -----
+    Problem:
+      type: object
+      description: RFC 7807 problem+json. See `docs/api/05-api-conventions.md` for full error catalog.
+      required: [type, title, status, errorCode]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: |
+            Stable problem type URI. Format: 
+            `https://api.stockapp.example/problems/<error-code-slug>`.
+            URLs survive across API versions.
+          example: "https://api.stockapp.example/problems/insufficient-stock"
+        title:
+          type: string
+          description: Short human-readable summary (stable per type).
+          example: "Insufficient Stock"
+        status:
+          type: integer
+          description: HTTP status code (stable per type).
+          example: 422
+        detail:
+          type: string
+          description: Runtime-specific description (may contain dynamic values).
+        instance:
+          type: string
+          description: Request path.
+        errorCode:
+          type: string
+          description: |
+            Stable enum value (e.g., `INV_INSUFFICIENT_STOCK`). 
+            Clients switch on this. See error catalog in conventions doc.
+        context:
+          type: object
+          additionalProperties: true
+          description: Structured runtime context (variant_id, available, requested, etc.). Schema may evolve.
+        correlationId:
+          type: string
+          format: uuid
+          description: Same as `X-Correlation-Id` response header.
+
+    # ----- Pagination -----
+    PageRequest:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        sort:
+          type: string
+          description: Comma-separated; `-` prefix for descending. Endpoint-specific allowed fields.
+          example: "-created_at,name"
+    PageInfo:
+      type: object
+      required: [page, page_size, has_next, has_prev]
+      properties:
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_items:
+          type: integer
+          nullable: true
+          description: May be omitted for performance on some endpoints.
+        total_pages:
+          type: integer
+          nullable: true
+        has_next:
+          type: boolean
+        has_prev:
+          type: boolean
+
+    # ----- Common value objects -----
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: string
+          description: Decimal string. BigDecimal-safe. Format `\d+\.\d{2}` for MVP (TRY 2 decimals).
+          example: "1234.56"
+        currency:
+          type: string
+          example: "TRY"
+    Percentage:
+      type: string
+      description: Decimal string 0.00-100.00.
+      example: "20.00"
+    Quantity:
+      type: string
+      description: Decimal string, up to 3 decimal places.
+      example: "5.000"
+    DateTime:
+      type: string
+      format: date-time
+    Date:
+      type: string
+      format: date
+
+    # ----- Sale aggregate (DTO names; full props TBD Phase 7) -----
+    # POS / Sales
+    SaleResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, status, store_id, customer_party_id, lines, totals, payment_attempts, completed_at, correlation_id"
+    SaleSummary:
+      type: object
+      description: "TBD Phase 7. Lightweight version of SaleResponse for list views."
+    SaleLineResponse:
+      type: object
+      description: "TBD Phase 7."
+    CreateSaleRequest:
+      type: object
+      description: "TBD Phase 7. Fields: store_id, register_id, customer_party_id?"
+    UpdateSaleRequest:
+      type: object
+      description: "TBD Phase 7."
+    AddSaleLineRequest:
+      type: object
+      description: "TBD Phase 7. Fields: variant_id, quantity"
+    UpdateSaleLineRequest:
+      type: object
+      description: "TBD Phase 7. Fields: quantity?, line_discount?"
+    AttachCustomerRequest:
+      type: object
+      description: "TBD Phase 7. Fields: party_id"
+    ApplyLineDiscountRequest:
+      type: object
+      description: "TBD Phase 7. Fields: line_id, discount_type, discount_value, reason?, manager_override_token?"
+    ApplyCartDiscountRequest:
+      type: object
+      description: "TBD Phase 7. Fields: discount_type, discount_value, reason?, manager_override_token?"
+    RecordPaymentRequest:
+      type: object
+      description: "TBD Phase 7. Fields: tender_type, amount, card_terminal_ref?"
+    RetryCardPaymentRequest:
+      type: object
+      description: "TBD Phase 7. Fields: card_terminal_ref"
+    PaymentAttemptResponse:
+      type: object
+      description: "TBD Phase 7."
+    CompleteSaleRequest:
+      type: object
+      description: "TBD Phase 7. Fields: client_total_for_verification"
+    CancelSaleRequest:
+      type: object
+      description: "TBD Phase 7. Fields: reason?"
+    AdminReverseSaleRequest:
+      type: object
+      description: "TBD Phase 7. Fields: reason"
+    SearchSalesRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+          description: "TBD Phase 7."
+    ReceiptResponse:
+      type: object
+      description: "TBD Phase 7. Fields: sale_id, items, totals, payment, store_info, receipt_url"
+
+    # Returns
+    ReturnResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, mode, status, original_sale_id, customer_party_id, return_lines, exchange_lines, refund_tender, settlement_delta, correlation_id"
+    ReturnSummary:
+      type: object
+      description: "TBD Phase 7."
+    InitiateReturnRequest:
+      type: object
+      description: "TBD Phase 7. Fields: mode, original_sale_id?, customer_party_id?, store_id, reason_code?, manager_override_token?, note?"
+    UpdateReturnLinesRequest:
+      type: object
+      description: "TBD Phase 7."
+    UpdateExchangeLinesRequest:
+      type: object
+      description: "TBD Phase 7."
+    SetRefundTenderRequest:
+      type: object
+      description: "TBD Phase 7. Fields: tender_type, amount"
+    FinalizeReturnRequest:
+      type: object
+      description: "TBD Phase 7."
+    CancelReturnRequest:
+      type: object
+      description: "TBD Phase 7."
+    SearchReturnsRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    # Catalog
+    ProductResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, name, code, status, brand_id?, category_id?, description?, image_urls?, created_at, updated_at"
+    ProductSummary:
+      type: object
+      description: "TBD Phase 7."
+    CreateProductRequest:
+      type: object
+      description: "TBD Phase 7."
+    UpdateProductRequest:
+      type: object
+      description: "TBD Phase 7."
+    ArchiveProductRequest:
+      type: object
+      description: "TBD Phase 7. Fields: reason?"
+    SearchProductsRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    VariantResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, product_id, sku, barcode, display_name, attributes, is_active, has_sale_history"
+    VariantSummary:
+      type: object
+      description: "TBD Phase 7."
+    CreateVariantBatchRequest:
+      type: object
+      description: "TBD Phase 7. Fields: variants[{ attributes_map }]"
+    UpdateVariantRequest:
+      type: object
+      description: "TBD Phase 7. Fields: sku?, attributes? (rejected if has_sale_history)"
+    DeactivateVariantRequest:
+      type: object
+      description: "TBD Phase 7. Fields: reason?"
+    SearchVariantsRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    AttributeResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, name, system_key?, values[], is_active"
+    CreateAttributeRequest:
+      type: object
+      description: "TBD Phase 7."
+    UpdateAttributeRequest:
+      type: object
+      description: "TBD Phase 7."
+    AddAttributeValueRequest:
+      type: object
+      description: "TBD Phase 7."
+
+    BrandResponse:
+      type: object
+      description: "TBD Phase 7."
+    CreateBrandRequest:
+      type: object
+      description: "TBD Phase 7."
+    UpdateBrandRequest:
+      type: object
+      description: "TBD Phase 7."
+
+    CategoryResponse:
+      type: object
+      description: "TBD Phase 7. Tree structure."
+    CreateCategoryRequest:
+      type: object
+      description: "TBD Phase 7."
+    UpdateCategoryRequest:
+      type: object
+      description: "TBD Phase 7."
+
+    MissingItemResponse:
+      type: object
+      description: "TBD Phase 7."
+    CreateMissingItemRequest:
+      type: object
+      description: "TBD Phase 7."
+    ResolveMissingItemRequest:
+      type: object
+      description: "TBD Phase 7."
+    RejectMissingItemRequest:
+      type: object
+      description: "TBD Phase 7."
+
+    # Pricing
+    PriceListResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, name, status, activated_at?, entries_count"
+    CreatePriceListRequest:
+      type: object
+      description: "TBD Phase 7."
+    PriceEntryResponse:
+      type: object
+      description: "TBD Phase 7."
+    SearchPriceEntriesRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+    UpsertPriceEntriesRequest:
+      type: object
+      description: "TBD Phase 7. Fields: entries[{variant_id, price}]"
+    StoreOverrideResponse:
+      type: object
+      description: "TBD Phase 7."
+    UpsertStoreOverrideRequest:
+      type: object
+      description: "TBD Phase 7. Fields: variant_id, store_id, price, below_cost_reason?"
+    ResolvedPriceResponse:
+      type: object
+      required: [variant_id, store_id, price, source]
+      properties:
+        variant_id:
+          type: string
+          format: uuid
+        store_id:
+          type: string
+          format: uuid
+        price:
+          $ref: '#/components/schemas/Money'
+        source:
+          type: string
+          enum: [BASE_LIST, STORE_OVERRIDE]
+        is_below_cost:
+          type: boolean
+    ResolveBatchRequest:
+      type: object
+      description: "TBD Phase 7. Fields: variant_ids[], store_id"
+
+    # Inventory
+    StockBalanceResponse:
+      type: object
+      description: "TBD Phase 7. Fields: variant_id, store_id, quantity_on_hand, quantity_reserved, quantity_in_transit_inbound, quantity_in_transit_outbound, weighted_avg_cost, last_movement_at, is_synthetic"
+    SearchStockBalancesRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    StockMovementResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, variant_id, store_id, movement_type, quantity, resulting_balance_at_movement, movement_wac_snapshot, correlation_id, reason_code, actor_user_id, occurred_at, reference"
+    SearchMovementsRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    TransferResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, status, source_store_id, target_store_id, lines, dispatched_at?, received_at?, correlation_id"
+    TransferSummary:
+      type: object
+      description: "TBD Phase 7."
+    CreateTransferRequest:
+      type: object
+      description: "TBD Phase 7."
+    UpdateTransferDraftRequest:
+      type: object
+      description: "TBD Phase 7."
+    DispatchTransferRequest:
+      type: object
+      description: "TBD Phase 7."
+    ReceiveTransferRequest:
+      type: object
+      description: "TBD Phase 7. Fields: lines[{transfer_line_id, received_quantity, discrepancy_reason?}]"
+    CancelTransferRequest:
+      type: object
+      description: "TBD Phase 7. Fields: cancellation_reason (LOSS/DAMAGE/RECALLED/OTHER), free_text"
+    SearchTransfersRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    CountSessionResponse:
+      type: object
+      description: "TBD Phase 7."
+    CountSessionSummary:
+      type: object
+      description: "TBD Phase 7."
+    CountSessionLineResponse:
+      type: object
+      description: "TBD Phase 7."
+    CreateCountSessionRequest:
+      type: object
+      description: "TBD Phase 7."
+    UpdateCountSessionRequest:
+      type: object
+      description: "TBD Phase 7."
+    UpdateCountLineRequest:
+      type: object
+      description: "TBD Phase 7. Fields: counted_quantity, note?"
+    FinalizeCountRequest:
+      type: object
+      description: "TBD Phase 7. Fields: confirm_skipped_lines? (boolean)"
+    CancelCountRequest:
+      type: object
+      description: "TBD Phase 7."
+    SearchCountsRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    AdjustmentResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, store_id, lines, total_quantity_abs, is_large_adjustment, correlation_id, created_by, created_at"
+    AdjustmentSummary:
+      type: object
+      description: "TBD Phase 7."
+    CreateAdjustmentRequest:
+      type: object
+      description: "TBD Phase 7. Fields: store_id, lines[{variant_id, quantity_delta, reason_code, free_text_reason?}], note?, large_confirmation? (boolean)"
+    SearchAdjustmentsRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    # Purchasing
+    PurchaseInvoiceResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, internal_number, supplier_invoice_number, supplier_id, store_id, status, lines, freight_total, header_discount, totals, invoice_date, committed_at?, correlation_id"
+    PurchaseInvoiceSummary:
+      type: object
+      description: "TBD Phase 7."
+    CreatePurchaseInvoiceRequest:
+      type: object
+      description: "TBD Phase 7."
+    UpdatePurchaseInvoiceDraftRequest:
+      type: object
+      description: "TBD Phase 7."
+    UpdatePurchaseInvoiceLinesRequest:
+      type: object
+      description: "TBD Phase 7. Fields: lines[{variant_id, quantity, unit_cost, line_discount?, vat_rate}]"
+    CommitPurchaseInvoiceRequest:
+      type: object
+      description: "TBD Phase 7."
+    ReversePurchaseInvoiceRequest:
+      type: object
+      description: "TBD Phase 7. Fields: reason"
+    SearchPurchaseInvoicesRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    # Finance — parties
+    PartyResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, role, display_name, phone (masked unless permission), email (masked unless permission), tax_number?, address?, is_active"
+    PartySummary:
+      type: object
+      description: "TBD Phase 7."
+    CreatePartyRequest:
+      type: object
+      description: "TBD Phase 7. Fields: role, display_name, phone, email?, tax_number?"
+    UpdatePartyRequest:
+      type: object
+      description: "TBD Phase 7."
+    DeactivatePartyRequest:
+      type: object
+      description: "TBD Phase 7."
+    SearchPartiesRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    # Finance — accounts
+    AccountSummaryResponse:
+      type: object
+      description: "TBD Phase 7. Fields: party_id, role, balance, credit_limit?, credit_used?, store_credit_balance?, aging{0_30, 30_60, 60_90, 90_plus}"
+    AccountMovementResponse:
+      type: object
+      description: "TBD Phase 7."
+    SearchAccountMovementsRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    # Finance — payments
+    PaymentResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, internal_number, direction, party_id, amount, tender_type, store_id, bank_transfer_reference?, overpayment_amount?, correlation_id, created_at"
+    PaymentSummary:
+      type: object
+      description: "TBD Phase 7."
+    CreatePaymentRequest:
+      type: object
+      description: "TBD Phase 7. Fields: party_id, direction (COLLECT_FROM_CUSTOMER/PAY_TO_SUPPLIER), amount, tender_type, store_id, bank_transfer_reference?, note?"
+    SearchPaymentsRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    # Finance — store credit
+    StoreCreditBalanceResponse:
+      type: object
+      description: "TBD Phase 7. Fields: party_id, balance, last_issued_at, last_redeemed_at"
+    SearchStoreCreditMovementsRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    # Identity
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      required: [access_token, refresh_token, user]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          description: Access token TTL in seconds.
+        user:
+          $ref: '#/components/schemas/CurrentUserResponse'
+    RefreshTokenRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+    VerifyManagerPinRequest:
+      type: object
+      required: [pin, scope]
+      properties:
+        pin:
+          type: string
+          minLength: 6
+          maxLength: 6
+        scope:
+          type: string
+          description: "What this PIN authorizes (e.g., DISCOUNT_OVERRIDE, RETURN_WITHOUT_REFERENCE)"
+    ManagerOverrideTokenResponse:
+      type: object
+      required: [override_token, expires_at]
+      properties:
+        override_token:
+          type: string
+          format: uuid
+        expires_at:
+          $ref: '#/components/schemas/DateTime'
+    SetManagerPinRequest:
+      type: object
+      required: [pin]
+      properties:
+        pin:
+          type: string
+          minLength: 6
+          maxLength: 6
+
+    CurrentUserResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, display_name, email, tenant_id, roles[], assigned_stores[]"
+    EffectivePermissionsResponse:
+      type: object
+      description: "TBD Phase 7. Fields: permissions{permission_code: role_origin}"
+    UserResponse:
+      type: object
+      description: "TBD Phase 7."
+    UserSummary:
+      type: object
+      description: "TBD Phase 7."
+    CreateUserRequest:
+      type: object
+      description: "TBD Phase 7. Fields: display_name, email, initial_password (server-generated if absent), roles[], store_ids[]"
+    UpdateUserRequest:
+      type: object
+      description: "TBD Phase 7. Fields: display_name?, email?, roles?, store_ids? (STORE_MANAGER restricted per 3.F.7)"
+    DeactivateUserRequest:
+      type: object
+      description: "TBD Phase 7."
+    ResetPasswordResponse:
+      type: object
+      description: "TBD Phase 7. Returns temp_password (emailed) or status."
+    SearchUsersRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    RoleResponse:
+      type: object
+      description: "TBD Phase 7."
+    PermissionResponse:
+      type: object
+      description: "TBD Phase 7."
+
+    StoreResponse:
+      type: object
+      description: "TBD Phase 7."
+    CreateStoreRequest:
+      type: object
+      description: "TBD Phase 7."
+    UpdateStoreRequest:
+      type: object
+      description: "TBD Phase 7."
+    CloseStoreRequest:
+      type: object
+      description: "TBD Phase 7."
+
+    TenantSettingsResponse:
+      type: object
+      description: "TBD Phase 7. Fields: operational{...}, dangerous{...}, updated_at"
+    UpdateOperationalSettingsRequest:
+      type: object
+      description: "TBD Phase 7."
+    UpdateDangerousFlagRequest:
+      type: object
+      required: [key, value, confirmation_phrase]
+      properties:
+        key:
+          type: string
+        value:
+          description: Polymorphic; depends on flag.
+        confirmation_phrase:
+          type: string
+          description: Typed acknowledgment per 3.E.4.
+
+    # Cash Register
+    CashRegisterSessionResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, status, store_id, register_id, opening_float, opened_at, closed_at?, opened_by, closed_by?, correlation_id"
+    CashRegisterSessionSummary:
+      type: object
+      description: "TBD Phase 7."
+    OpenCashRegisterRequest:
+      type: object
+      required: [store_id, register_id, opening_float_amount]
+      properties:
+        store_id:
+          type: string
+          format: uuid
+        register_id:
+          type: string
+          format: uuid
+        opening_float_amount:
+          $ref: '#/components/schemas/Money'
+        note:
+          type: string
+    CloseCashRegisterRequest:
+      type: object
+      required: [counted_cash_amount]
+      properties:
+        counted_cash_amount:
+          $ref: '#/components/schemas/Money'
+        remaining_float_amount:
+          $ref: '#/components/schemas/Money'
+          description: Cash to leave in drawer for next session (per 3.F.1). System derives cash_removed.
+        variance_reason:
+          type: string
+          enum: [SHORT_CASHIER_ERROR, SHORT_UNKNOWN, OVER_CASHIER_ERROR, OVER_UNKNOWN, MISCOUNT, SUSPECTED_THEFT]
+        variance_note:
+          type: string
+        manager_override_token:
+          type: string
+          format: uuid
+          description: Required for large variance per 3.E.2.
+    ForceCloseSessionRequest:
+      type: object
+      required: [counted_cash_amount, reconciliation_note, manager_override_token]
+      properties:
+        counted_cash_amount:
+          $ref: '#/components/schemas/Money'
+        reconciliation_note:
+          type: string
+          minLength: 20
+        manager_override_token:
+          type: string
+          format: uuid
+    SessionSummaryResponse:
+      type: object
+      description: "TBD Phase 7."
+    ZReportResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, session_id, snapshot_payload (immutable), pdf_storage_key, generated_at, correlation_id"
+    CashMovementResponse:
+      type: object
+      description: "TBD Phase 7."
+    SearchCashRegisterSessionsRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+    SearchCashMovementsRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    # Reporting
+    ReportMetadata:
+      type: object
+      description: "TBD Phase 7. Fields: type, title, description, last_refreshed_at"
+    SalesSummaryQuery:
+      type: object
+      description: "TBD Phase 7. Fields: period, store_id?"
+    SalesSummaryResponse:
+      type: object
+      description: "TBD Phase 7. Fields: snapshot_at, totals{...}, by_tender, by_category, by_day"
+    StockValuationQuery:
+      type: object
+      description: "TBD Phase 7."
+    StockValuationResponse:
+      type: object
+      description: "TBD Phase 7. Fields: snapshot_at, total_value, by_store[], by_category[]. NON-AUTHORITATIVE: shows snapshot timestamp."
+    TopSellingQuery:
+      type: object
+      description: "TBD Phase 7."
+    TopSellingResponse:
+      type: object
+      description: "TBD Phase 7."
+    CustomerAgingQuery:
+      type: object
+      description: "TBD Phase 7."
+    CustomerAgingResponse:
+      type: object
+      description: "TBD Phase 7."
+    MarkupAnalysisQuery:
+      type: object
+      description: "TBD Phase 7."
+    MarkupAnalysisResponse:
+      type: object
+      description: "TBD Phase 7. Formula: (price - WAC) / WAC × 100. Per 3.F: 'Markup' not 'Margin'."
+
+    # Audit
+    AuditEventResponse:
+      type: object
+      description: "TBD Phase 7. Fields: id, event_type, occurred_at, actor_user_id, actor_user_name, summary, correlation_id, payload_preview"
+    AuditEventDetailResponse:
+      type: object
+      description: "TBD Phase 7. Includes full payload (PII-masked per viewer permissions; 3.F.8)."
+    SearchAuditLogRequest:
+      allOf:
+        - $ref: '#/components/schemas/PageRequest'
+        - type: object
+
+    # Jobs (async)
+    ExportJobResponse:
+      type: object
+      required: [job_id, status, poll_url]
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+          enum: [QUEUED, RUNNING, COMPLETED, FAILED]
+        poll_url:
+          type: string
+        expected_completion_seconds:
+          type: integer
+    ExportJobStatusResponse:
+      type: object
+      description: "TBD Phase 7. Fields: job_id, status, progress, download_url? (when COMPLETED), failure_reason? (when FAILED)"
+
+    # Health
+    HealthResponse:
+      type: object
+      description: "TBD Phase 7."
+    ReadinessResponse:
+      type: object
+      description: "TBD Phase 7."
+
+# ============================================================================
+# Tags (for grouping in generated docs)
+# ============================================================================
+tags:
+  - name: auth
+    description: Authentication & current user
+  - name: pos
+    description: POS sales flow
+  - name: sales
+    description: Sales queries & admin operations
+  - name: returns
+    description: Returns & exchanges
+  - name: catalog-products
+    description: Product catalog
+  - name: catalog-variants
+    description: Product variants
+  - name: catalog-other
+    description: Brands, categories, attributes, missing items
+  - name: pricing
+    description: Price lists & store overrides
+  - name: inventory-stock
+    description: Stock balances & queries
+  - name: inventory-movements
+    description: Movement history
+  - name: inventory-transfers
+    description: Stock transfers
+  - name: inventory-counts
+    description: Stock count sessions
+  - name: inventory-adjustments
+    description: Stock adjustments
+  - name: purchasing
+    description: Purchase invoices
+  - name: finance-parties
+    description: Customers & suppliers
+  - name: finance-accounts
+    description: Account balances & movements
+  - name: finance-payments
+    description: Payment collection (customer/supplier)
+  - name: cashregister
+    description: Cash register sessions & Z reports
+  - name: reports
+    description: Reports & CSV exports
+  - name: audit
+    description: Audit log browser
+  - name: admin-users
+    description: User & role administration
+  - name: admin-tenant
+    description: Tenant settings & stores
+  - name: cross-cutting
+    description: Health, jobs, observability
+
+# ============================================================================
+# Paths
+# ============================================================================
+# Note: paths section is illustrative — first ~20 endpoints shown with full
+# detail (request/response refs); remaining endpoints follow the same pattern
+# and are listed in `05-endpoint-catalogue.md`. Full path expansion deferred 
+# to Phase 7 implementation where the OpenAPI is generated alongside controllers.
+paths:
+
+  # ==========================================================================
+  # Authentication
+  # ==========================================================================
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      security: []  # public
+      x-permission: (public)
+      x-idempotent: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      operationId: refreshToken
+      security: []
+      x-permission: (public)
+      x-idempotent: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/manager-pin-verify:
+    post:
+      tags: [auth]
+      operationId: verifyManagerPin
+      x-permission: (any authenticated)
+      x-idempotent: false
+      x-screen-ref: "3.A.4"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyManagerPinRequest'
+      responses:
+        '200':
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagerOverrideTokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '423':
+          description: Manager PIN locked (3-fail lockout)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  # ==========================================================================
+  # POS sales (3.A flow)
+  # ==========================================================================
+  /pos/sales:
+    post:
+      tags: [pos]
+      operationId: createSale
+      x-permission: sales.create
+      x-idempotent: true
+      x-screen-ref: "3.A.1"
+      x-aggregate: Sale
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSaleRequest'
+      responses:
+        '201':
+          description: Sale DRAFT created
+          headers:
+            Location:
+              schema: { type: string }
+            X-Correlation-Id:
+              schema: { type: string, format: uuid }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /pos/sales/{id}/complete:
+    post:
+      tags: [pos]
+      operationId: completeSale
+      x-permission: sales.complete
+      x-idempotent: true
+      x-screen-ref: "3.A.5"
+      x-aggregate: Sale
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteSaleRequest'
+      responses:
+        '200':
+          description: Sale completed (atomic: inventory + cashregister + finance writes)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleResponse'
+        '422':
+          description: Domain rule violation (insufficient stock, credit limit exceeded, etc.)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  # ==========================================================================
+  # Purchase invoice commit (3.D.2)
+  # ==========================================================================
+  /finance/purchase-invoices/{id}/commit:
+    post:
+      tags: [purchasing]
+      operationId: commitPurchaseInvoice
+      x-permission: purchasing.invoices.commit
+      x-idempotent: true
+      x-screen-ref: "3.D.2"
+      x-aggregate: PurchaseInvoice
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommitPurchaseInvoiceRequest'
+      responses:
+        '200':
+          description: Atomic commit applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseInvoiceResponse'
+        '409':
+          description: Supplier invoice number duplicate
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  # ==========================================================================
+  # Inventory transfer dispatch / receive (3.C.3)
+  # ==========================================================================
+  /inventory/transfers/{id}/dispatch:
+    post:
+      tags: [inventory-transfers]
+      operationId: dispatchTransfer
+      x-permission: inventory.transfers.dispatch
+      x-idempotent: true
+      x-screen-ref: "3.C.3"
+      x-aggregate: Transfer
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DispatchTransferRequest'
+      responses:
+        '200':
+          description: DRAFT → DISPATCHED, source TRANSFER_OUT movements
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResponse'
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /inventory/transfers/{id}/receive:
+    post:
+      tags: [inventory-transfers]
+      operationId: receiveTransfer
+      x-permission: inventory.transfers.receive
+      x-idempotent: true
+      x-screen-ref: "3.C.3"
+      x-aggregate: Transfer
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiveTransferRequest'
+      responses:
+        '200':
+          description: IN_TRANSIT → RECEIVED, atomic target TRANSFER_IN + optional ADJUSTMENT_OUT for discrepancy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResponse'
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  # ==========================================================================
+  # Cash register open / close (3.E.1, 3.E.2)
+  # ==========================================================================
+  /cash-register/open:
+    post:
+      tags: [cashregister]
+      operationId: openCashRegister
+      x-permission: cashregister.open
+      x-idempotent: true
+      x-screen-ref: "3.E.1"
+      x-aggregate: CashRegisterSession
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenCashRegisterRequest'
+      responses:
+        '201':
+          description: Session opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashRegisterSessionResponse'
+        '409':
+          description: Session already open or orphan session exists
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /cash-register/sessions/{id}/close:
+    post:
+      tags: [cashregister]
+      operationId: closeCashRegister
+      x-permission: cashregister.close
+      x-idempotent: true
+      x-screen-ref: "3.E.2"
+      x-aggregate: CashRegisterSession
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloseCashRegisterRequest'
+      responses:
+        '200':
+          description: Session closed; Z report queued for generation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashRegisterSessionResponse'
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  # ==========================================================================
+  # Return finalize (3.D.4)
+  # ==========================================================================
+  /finance/returns/{id}/finalize:
+    post:
+      tags: [returns]
+      operationId: finalizeReturn
+      x-permission: returns.process
+      x-idempotent: true
+      x-screen-ref: "3.D.4"
+      x-aggregate: Return
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinalizeReturnRequest'
+      responses:
+        '200':
+          description: Return finalized; stock back-in + refund tender posted + exchange Sale created if applicable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReturnResponse'
+        '422':
+          description: Domain rule (refund tender not allowed, etc.)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  # ==========================================================================
+  # Pricing resolve (POS critical path)
+  # ==========================================================================
+  /pricing/resolve:
+    get:
+      tags: [pricing]
+      operationId: resolvePrice
+      x-permission: (any with catalog read)
+      x-idempotent: false
+      x-screen-ref: "3.A.1"
+      parameters:
+        - name: variant_id
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: store_id
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Resolved price
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolvedPriceResponse'
+        '404':
+          description: No active price for this variant+store
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  # ==========================================================================
+  # Remaining ~150 endpoints follow the same patterns. 
+  # See `05-endpoint-catalogue.md` for the full list.
+  # Phase 7 generates full OpenAPI from controllers with springdoc-openapi.
+  # ==========================================================================
