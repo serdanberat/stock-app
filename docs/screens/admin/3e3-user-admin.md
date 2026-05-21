@@ -77,10 +77,42 @@ NO. Permission changes are sensitive.
 |---|---|
 | `admin.users.view` | STORE_MANAGER+ (view); SUPER_ADMIN (mutate) |
 | `admin.users.create` | SUPER_ADMIN |
-| `admin.users.edit` | SUPER_ADMIN; STORE_MANAGER (own store users, limited fields) |
+| `admin.users.edit` | SUPER_ADMIN (all fields); STORE_MANAGER (own store users, restricted fields per matrix below) |
 | `admin.users.reset_password` | SUPER_ADMIN |
 | `admin.users.reset_manager_pin` | SUPER_ADMIN, STORE_MANAGER |
 | `admin.users.assign_role` | SUPER_ADMIN |
+
+### STORE_MANAGER edit scope (explicit allowlist)
+
+To prevent privilege escalation, STORE_MANAGER's edit capability is bound by an explicit field-level allowlist. Server enforces at PATCH endpoint, not just route-level.
+
+| Operation | STORE_MANAGER | SUPER_ADMIN |
+|---|---|---|
+| Activate/deactivate cashier (own store) | ✓ | ✓ |
+| Reset cashier password | ✗ | ✓ |
+| Reset manager PIN (own store users) | ✓ | ✓ |
+| Edit user display_name (own store users) | ✓ | ✓ |
+| Change user email | ✗ | ✓ |
+| Assign roles | ✗ | ✓ |
+| Assign stores | ✗ | ✓ |
+| Create user | ✗ | ✓ |
+| Delete user | ✗ (deactivate only) | ✗ (deactivate only) |
+
+**Rationale**: STORE_MANAGER scope is operational user lifecycle for own store (activate/deactivate/PIN reset). Identity mutation (email) and authorization mutation (role/store assignment) are SUPER_ADMIN territory. This eliminates the "STORE_MANAGER promotes self to SUPER_ADMIN" attack surface.
+
+**Server enforcement**: field-level permission check in PATCH endpoint. If STORE_MANAGER includes `roles` or `store_ids` in PATCH body → 403 (not 200 with silent drop).
+
+### Multi-role semantics (no deny rules MVP)
+
+```
+effective_permissions = UNION(all permissions from all assigned roles)
+```
+
+**No deny rules. No override semantics. Multi-role is purely additive in MVP.**
+
+This is a documented constraint, not an oversight. If a user is CASHIER + AUDITOR, both grant; nothing denies. No surprise.
+
+**v1.1+ consideration**: if business needs role denial rules (e.g. "AUDITOR explicitly blocks write permissions even if combined with STORE_MANAGER"), introduce a separate `role_deny_rules` table with explicit precedence — not implicit role ordering.
 
 ## Manager PIN reset
 

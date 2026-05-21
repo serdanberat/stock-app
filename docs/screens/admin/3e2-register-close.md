@@ -28,6 +28,30 @@ Z report is a snapshot bound to the closed session. Once generated:
 
 Rationale: tax/legal audit. Z reports are accounting artifacts; immutability is non-negotiable.
 
+### Byte-determinism invariant (CRITICAL)
+
+For "same payload → identical PDF bytes" claim to hold, the PDF generator MUST NOT embed any dynamic content not derived from `snapshot_payload`:
+
+- ✗ NO `now()` timestamps at render time
+- ✗ NO render request IDs
+- ✗ NO server hostname / instance ID
+- ✗ NO PDF generation library version string (use stable library, pin version)
+- ✗ NO compression timestamp in PDF metadata
+
+All timestamps shown in PDF MUST come from `snapshot_payload`:
+- "Closed at:" → from `payload.session_closed_at`
+- "Generated for date:" → from `payload.business_date`
+- Any other temporal reference → must be a payload field
+
+**Test requirement (Phase 7)**: byte-identical reprint test in CI:
+```
+1. Generate PDF from payload P → SHA256(pdf_v1)
+2. Generate PDF from payload P again → SHA256(pdf_v2)
+3. Assert pdf_v1 == pdf_v2 (byte-equal)
+```
+
+PDF library configuration: deterministic mode (e.g. Gotenberg 8 with `--no-pdf-version-fingerprint`, fixed font subset, no creation date metadata).
+
 ## Reads
 
 - `GET /cash-register/sessions/{id}/summary`
@@ -46,7 +70,8 @@ Rationale: tax/legal audit. Z reports are accounting artifacts; immutability is 
     ```
     {
       counted_cash_amount,
-      cash_removed_amount?,        // closing deposit to bank/safe
+      remaining_float_amount?,     // cash to leave in drawer for next session
+                                   // System computes: cash_removed = expected_cash - remaining_float
       variance_reason?,            // required if variance > tolerance
       variance_note?
     }
@@ -55,7 +80,7 @@ Rationale: tax/legal audit. Z reports are accounting artifacts; immutability is 
   - Atomically:
     - status = CLOSED
     - If variance: `cash_movement` CORRECTION
-    - If cash_removed: `cash_movement` CLOSING_DEPOSIT
+    - If remaining_float < expected_cash: `cash_movement` CLOSING_DEPOSIT for the removed delta
     - Z report row created (status PENDING_GENERATION)
     - Outbox event ZReportRequested triggers document worker
 
@@ -97,7 +122,7 @@ Required (X-Idempotency-Key).
 
 | Key | Action |
 |---|---|
-| Tab | counted_cash → cash_removed → variance fields → close |
+| Tab | counted_cash → remaining_float → variance fields → close |
 | `Ctrl+S` | Close session |
 | `Esc` | Cancel (returns to POS) |
 
@@ -145,9 +170,9 @@ Required (X-Idempotency-Key).
 │  Fiili nakit sayım: [₺ 3.872,00]                                   │
 │  Fark:              -₺ 3,00 (tolerans içinde)                      │
 │                                                                    │
-│  Bankaya yatırılacak (opsiyonel):                                  │
-│  [₺ 3.500,00]                                                      │
-│  Kasada kalacak:    ₺ 372,00                                       │
+│  Kasada bırakılacak nakit:                                         │
+│  [₺ 372,00]                                                        │
+│  Çıkacak nakit:     ₺ 3.500,00  (sistem hesaplar)                  │
 │                                                                    │
 │  Not: [_______________________________]                            │
 │                                                                    │
@@ -197,7 +222,8 @@ Required (X-Idempotency-Key).
 ## Implementation notes
 
 - Summary load uses materialized aggregate query on cash_movements
-- Z report PDF deterministic: same payload → same PDF bytes
+- Z report PDF deterministic: same payload → same PDF bytes (see Byte-determinism invariant above)
 - Reprint renders stored snapshot; does NOT recompute
 - `z_reports` table schema:
   - id, tenant_id, session_id, snapshot_payload (JSONB immutable), pdf_storage_key, generated_at
+- **Cash close mental model**: cashier enters "kasada bırakılacak nakit" (what stays in drawer for next session). System computes `cash_removed = expected_cash - remaining_float_amount`. CLOSING_DEPOSIT cash_movement created for the removed delta. This matches cashier's natural thinking ("ne bırakacağım?") rather than the ambiguous "what am I taking out?" which could mean safe deposit, bank transfer, or next-day float.

@@ -138,3 +138,42 @@ N/A (read-only).
 - Raw JSON via expandable accordion
 - Search index: GIN on payload JSONB + `tenant_id` + `occurred_at`
 - CSV export via worker pattern; large queries throttled
+
+## Retention policy
+
+**Audit events retained minimum 5 years per tenant.** No deletion endpoint. No automatic purge MVP.
+
+**Rationale**: Turkish tax authority (VUK — Vergi Usul Kanunu) and commercial code require 5-year retention for accounting records. Audit log feeds compliance investigation and dispute resolution. Setting retention policy now (even without active purge) locks the contract; adding retention later requires backfill and is error-prone.
+
+**Storage projection**:
+- ~1-5 MB/store/year audit events at typical retail volume
+- 5-year × 100 stores = 500MB-2.5GB per tenant
+- Negligible at PostgreSQL TOAST efficiency for JSONB payloads
+- Indexes (GIN payload + correlation_id + occurred_at) add ~20% overhead
+
+**v1.1+ consideration**: archival tier (Neon → S3 Glacier-equivalent) for events > 2 years old. MVP keeps everything hot.
+
+**No retention configuration UI MVP**: tenants cannot opt-in to shorter retention (compliance reasons).
+
+## PII masking for non-AUDITOR viewers
+
+`AUDITOR` and `SUPER_ADMIN` roles see full PII (these roles by definition have full data access scope).
+
+When `audit.view` granted to `STORE_MANAGER` (tenant config option), PII fields in event payload are masked unless user also has the corresponding party-side permissions (`parties.view_full_phone`, `parties.view_full_email`).
+
+**Masking patterns** (consistent with 3.A.3 customer modal):
+
+| PII field | Masked form | Example |
+|---|---|---|
+| Phone | First 4 + asterisks + last 4 | `0532 *** 1234` |
+| Email | First char + asterisks + last char of local-part + full domain | `a***t@example.com` |
+| Full name | NOT masked (operational necessity) | "Ayşe Yılmaz" |
+| Customer/supplier ID (internal) | Visible | `P-3421` |
+| Sale internal number | Visible | `PI-2026-1234` |
+| Amounts (TRY) | Visible | `₺250,00` |
+
+**Implementation**: `AuditEventSummaryComposer` and raw-JSON expansion both apply masking transform based on viewer's effective permissions. Masking applied at composition time (Java), NOT at storage time — raw audit_event_log payload keeps full PII.
+
+**Rationale**: defense-in-depth. Audit screen shows sensitive event payloads; STORE_MANAGER browsing own-store events doesn't need plain-text customer phones. Tenant data exposure scope follows least-privilege.
+
+**Edge case**: when audit event payload includes nested party objects (e.g. customer name + phone in return payload), masking applies recursively through known PII paths. Composer maintains an allowlist of "PII paths" per event type.

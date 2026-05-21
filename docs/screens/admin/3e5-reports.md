@@ -70,6 +70,19 @@ Consistent with 3.B.1, 3.C.1 patterns. Each report header:
 "Veriler: 14:32'de yenilendi · [⟳ Yenile]"
 ```
 
+### Refresh button — cache bypass
+
+The `[⟳ Yenile]` button issues request with `Cache-Control: no-cache` header (or `?fresh=true` query param). Server bypasses 5-min Caffeine cache for explicit refresh requests; updates cache with new result.
+
+**UX behavior**:
+- Click [⟳ Yenile]
+- Loading indicator
+- Fresh data returned (cache miss intentional)
+- "Veriler: 14:32'de yenilendi" timestamp updates to new fetch time
+- Cache populated with fresh result (subsequent unprompted views hit cache)
+
+**Rationale**: stale cache hit on refresh click is a worse UX than slightly slow refresh. Cache is for unprompted views; explicit user intent (refresh click) bypasses.
+
 Stock valuation specifically:
 ```
 "Stok değeri projection'dan alınmıştır. Anlık tutarsızlık ~1-2dk."

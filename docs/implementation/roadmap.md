@@ -155,25 +155,63 @@ This roadmap turns the locked architecture into an executable plan.
 
 ## What comes next
 
-### Phase 4 — Backend architecture detail
+### Phase 4 — Module Contracts (LEAN scope)
 
-Module-by-module specification of:
-- Aggregate root implementations (Java)
-- Service layer pattern (Application services vs domain services)
-- JPA + JOOQ split (when each)
-- Repository contracts
-- Transaction boundaries
-- Outbox dispatcher details
-- Caffeine cache invalidation patterns
-- Spring Modulith ArchUnit rules per module
+> **Scope rationale:** Phase 3 already specifies aggregate ownership, state machines, transaction boundaries, and endpoint semantics per screen. Phase 4 is NOT a re-spec; it's the **module boundary lock** that ArchUnit will enforce. Avoid 30-page module specs; aim for ~1 page per module.
 
-### Phase 5 — API endpoint catalogue + OpenAPI
+Deliverable (~15-18 pages total):
 
-Complete OpenAPI spec for all ~120 endpoints surfaced across Phase 3.
+1. **Module list + Bounded Context mapping** (~1 page)
+2. **Module Dependency Matrix** (CENTRAL ARTIFACT, ~1-2 pages)
+   - Rows: 10 modules
+   - Columns: can-depend-on-write / can-depend-on-query-only / cannot-depend-on
+   - Each row maps to ArchUnit rules
+3. **Per-module spec** (10 × ~1 page = 10-12 pages)
+   - Package structure (`com.linxa.{module}.{subpackage}/`)
+   - Aggregate roots (list, with reference to Phase 2B invariants)
+   - Service layer split (Application vs Domain)
+   - Repository interface contracts
+   - Transaction ownership (@Transactional placement rules)
+   - Outbox events emitted/consumed
+   - ArchUnit rules (with comments referencing matrix row)
+   - Cache invalidation hooks
+4. **Shared kernel + cross-cutting** (~1-2 pages)
+   - Money, TenantId, IdempotencyKey, CorrelationId
+   - Common DTOs (PageRequest, ErrorResponse)
+   - Event base interface
+   - TenantAwareTransactionManager (already in Phase 6.B)
+
+**Not in Phase 4 scope:**
+- Aggregate root implementation code (Phase 7)
+- Full service method signatures (Phase 7)
+- Database query implementations (Phase 7)
+- Detailed DTO field definitions (Phase 5)
+
+### Phase 5 — Endpoint Catalogue + OpenAPI Skeleton (LEAN scope)
+
+> **Scope rationale:** Phase 3 already lists every endpoint with method, path, auth, idempotency. Phase 5 catalogues them in one place + generates OpenAPI skeleton. Full DTO property definitions emerge from JPA entities at Phase 7.
+
+Deliverable:
+
+1. **Endpoint Catalogue table** (~120 endpoints across modules)
+   - Method + path
+   - Auth/permission codes
+   - Idempotency (yes/no)
+   - Request DTO name (e.g. `CreatePurchaseInvoiceRequest`)
+   - Response DTO name
+   - Phase 3 screen reference
+2. **OpenAPI skeleton**
+   - Paths section (method + path + permission tag)
+   - Schemas section (DTO names only; properties marked `TODO at implementation`)
+   - Tag groups (pos, catalog, inventory, finance, admin)
+
+**Not in Phase 5 scope:**
+- Full property-level OpenAPI schemas (generated from JPA at Phase 7)
+- Example payloads (Phase 7 with real fixtures)
 
 ### Phase 7 — Implementation sprints
 
-12-sprint Claude Code-driven implementation plan with milestone deliverables.
+Claude Code-driven sprint plan. Sprint 1: repository skeleton + Identity module. Subsequent sprints follow domain dependency order (Catalog → Inventory → Pricing → Sales/POS → Purchasing → Finance → Cash → Reporting → Admin).
 
 ---
 
@@ -204,13 +242,13 @@ Complete OpenAPI spec for all ~120 endpoints surfaced across Phase 3.
 
 ---
 
-## Phase 3.F — Pending refinements (apply at Phase 4 kickoff)
+## Phase 3.F — Refinements (✅ APPLIED 2026-05-21)
 
-> **Status:** Deferred — apply during first Phase 4 delivery
+> **Status:** ✅ Applied to admin spec files + migration 023
 > **Source:** Phase 3.E review correction notes
-> **Reason for deferral:** corrections affect 5 already-shipped spec files; batching them with Phase 4 backend module work avoids re-touching delivery boundaries
+> **Applied:** 2026-05-21 (Phase 4 kickoff session)
 
-These are NOT new design decisions. They are wording/scope clarifications and explicit invariants for ambiguities surfaced during Phase 3.E review. Each correction is small but operationally important.
+8 corrections from Phase 3.E review have been integrated into the 5 admin spec files and a patch migration. These are surgical clarifications — wording, explicit invariants, snapshot policy — not architectural changes.
 
 ### 3.F.1 — Cash Register Close: invert mental model
 
@@ -338,9 +376,13 @@ No deny rules. No override semantics. Multi-role is purely additive in MVP. This
 
 ## Phase 3 status — kapanış
 
-Phase 3 design phase is closed. 31 screens, 5 sub-phases, 3 ADRs net new (018-020).
+Phase 3 design phase is closed. 31 screens, 5 sub-phases, 3 ADRs net new (018-020). Phase 3.F refinements (8 corrections) applied 2026-05-21.
 
-Remaining refinements (3.F.1-3.F.8) are surgical clarifications, not architectural rework. They will be applied as part of the first Phase 4 delivery, alongside backend module specifications — which will reference these clarified specs anyway.
+**Next milestone**: Phase 4 — Module Contracts (focused scope per Phase 4 lean approach):
+- Module list + bounded context mapping
+- **Module dependency matrix** (central artifact)
+- Per-module spec (~1 page each: package structure, aggregate roots, service split, transaction ownership, outbox events, ArchUnit rules)
+- Shared kernel + cross-cutting
 
-**Next milestone**: Phase 4 — Backend architecture detail. Will include the 8 refinement patches above as part of its first deliverable.
+After Phase 4: Phase 5 endpoint catalogue + OpenAPI skeleton, then direct to Phase 7 implementation (Claude Code).
 

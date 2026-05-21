@@ -68,7 +68,9 @@ Phase 3.E completes Phase 3. After this, all 31 screens of the production POS/ER
 - **AuditEventSummaryComposer** Java-side (per ADR-019: business logic in Java, not DB function)
 - **Default permission**: AUDITOR + SUPER_ADMIN
 
-## Schema additions (Migration 022)
+## Schema additions (Migration 022 + Migration 023 patches)
+
+### Migration 022 — initial Phase 3.E schema
 
 - `cash_register_sessions` with `status`, partial UNIQUE index, `force_close_orphan_reconciliation_note` field
 - `z_reports` table: `snapshot_payload` JSONB immutable, `pdf_storage_key`, `generated_at`
@@ -77,6 +79,18 @@ Phase 3.E completes Phase 3. After this, all 31 screens of the production POS/ER
 - `tenant_settings_log` for change history (already in Phase 2D base; ensure typed_confirmation_phrase field)
 
 See `migrations/022_admin_extensions.sql`.
+
+### Migration 023 — Phase 3.F refinement patches
+
+Applied to all 5 admin spec files as part of Phase 3.F refinement:
+
+- `sales` table: `discount_threshold_snapshot`, `cart_discount_limit_snapshot`, `line_discount_limit_snapshot` — operation-start snapshots per 3.F.4
+- `returns` table: `window_snapshot` — operation-start snapshot of `return_window_days`
+- `adjustments` table: `large_threshold_snapshot` — operation-start snapshot
+- `cash_register_sessions` table: `variance_tolerance_snapshot`, `variance_large_threshold_snapshot` — operation-start snapshots
+- Cash close semantics rename: `cash_removed_amount` → `remaining_float_amount` in API request body; system derives `cash_removed = expected_cash - remaining_float`
+
+See `migrations/023_phase_3f_refinements.sql`.
 
 ## Audit event catalog (Phase 3.E additions)
 

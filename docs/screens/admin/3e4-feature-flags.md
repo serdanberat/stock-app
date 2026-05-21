@@ -122,5 +122,26 @@ Manage tenant-level configuration. Categorized form; two tiers (operational vs d
 - Each field has tooltip with description and effect
 - Locale/currency locked MVP (TRY only)
 - Dangerous tab visually distinct (red border, warning icon)
-- Changes effective immediately for new operations; in-flight operations use captured config at start
+- Changes effective immediately for new operations; in-flight operations use captured config at start (see Snapshot policy below)
 - Dangerous flag toggle requires typed phrase confirmation per flag (i18n key per flag)
+
+## Snapshot policy — operation-start config capture
+
+Mid-operation policy changes must not retroactively invalidate in-flight work. Open POS sale with %30 discount mid-flow must not break when manager tightens cart_discount to %10 in another tab. Snapshot at operation start guarantees determinism.
+
+**Explicit snapshot binding**:
+
+| Setting | When captured | Where snapshotted |
+|---|---|---|
+| `requires_reason_above_pct` | Sale aggregate creation (open DRAFT) | `sale.discount_threshold_snapshot` |
+| `max_cart_discount_pct_default` | Sale DRAFT creation | `sale.cart_discount_limit_snapshot` |
+| `max_line_discount_pct_default` | Sale DRAFT creation | `sale.line_discount_limit_snapshot` |
+| `return_window_days` | Return.initiate() | `return.window_snapshot` |
+| `adjustment_large_threshold` | Adjustment.create() | `adjustment.large_threshold_snapshot` |
+| `cash_variance_tolerance` | CashRegisterSession.open() | `cash_register_session.variance_tolerance_snapshot` |
+| `cash_variance_large_threshold` | CashRegisterSession.open() | `cash_register_session.variance_large_threshold_snapshot` |
+| `manager_pin_lockout_minutes` | PIN attempt start (per session) | derived from session.open snapshot |
+
+**Pricing already snapshot-frozen per ADR-018**: line.unit_price_gross is frozen at add-to-cart, not affected by mid-sale price list changes. This snapshot policy adds **policy snapshotting** alongside the existing price snapshotting.
+
+**Schema impact**: snapshot columns added to `sales`, `returns`, `adjustments`, `cash_register_sessions` tables — see migration 023 (Phase 3.F patch).
