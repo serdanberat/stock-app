@@ -1,7 +1,7 @@
 # Implementation Roadmap
 
-> **Status:** Phase 1, 2A–2E, 6, 3.A and 3.B locked. Phase 3.C–3.E, 4, 5 next.
-> **Last updated:** 2026-05-16
+> **Status:** Phase 1, 2A–2E, 6, 3.A, 3.B, 3.C, 3.D, 3.E locked. Phase 3 COMPLETE. Phase 4, 5 next.
+> **Last updated:** 2026-05-21
 
 This roadmap turns the locked architecture into an executable plan.
 
@@ -33,22 +33,63 @@ This roadmap turns the locked architecture into an executable plan.
 | 2D | Domain events, consumers, sagas | ✅ Locked |
 | 2E | Database schema (68 tables + 5 mviews) | ✅ Locked |
 | **6** | **Tech stack selection (9 sub-phases)** | **✅ Locked** |
-| 3 | Screen wireframes (text-mockups, 5 sub-phases) | In progress (3.A + 3.B locked) |
-| 4 | Backend architecture detail (module-by-module) | After Phase 3 |
+| **3** | **Screen wireframes (text-mockups, 5 sub-phases)** | **✅ COMPLETE (31 screens)** |
+| 4 | Backend architecture detail (module-by-module) | Next |
 | 5 | API endpoint catalogue + OpenAPI | After Phase 4 |
 | 7 | Implementation (12 sprints) | After Phase 5 |
 
-### Phase 3 sub-phases
+### Phase 3 sub-phases — COMPLETE
 
-| Sub-phase | Topic | Status |
-|---|---|---|
-| **3.A** | **POS Flow (7 screens)** | **✅ Locked** |
-| **3.B** | **Catalog Management (5 + 1 secondary screens: product list, create/edit, variant matrix, pricing, attributes, missing items)** | **✅ Locked** |
-| 3.C | Inventory Operations (stock list, transfer, count, adjustment) | Next |
-| 3.D | Financial Flows (purchase invoice, return/exchange, payment collection, account detail) | After 3.C |
-| 3.E | Operational/Admin (cash close + Z report, user/role admin, tenant flags, basic reports) | After 3.D |
+| Sub-phase | Topic | Screens | Status |
+|---|---|---|---|
+| **3.A** | **POS Flow** | 7 | **✅ Locked** |
+| **3.B** | **Catalog Management** | 6 | **✅ Locked** |
+| **3.C** | **Inventory Operations** | 5 | **✅ Locked** |
+| **3.D** | **Financial Flows** | 7 | **✅ Locked** |
+| **3.E** | **Operational/Admin** | 6 | **✅ Locked** |
+|  | **Total** | **31** |  |
 
-### Phase 3.B deliverables (locked, this milestone)
+### Phase 3.E deliverables (locked, this milestone)
+
+| Screen | Doc |
+|---|---|
+| 3.E.1 | Cash Register Open | `screens/admin/3e1-register-open.md` |
+| 3.E.2 | Cash Register Close + Z Report | `screens/admin/3e2-register-close.md` |
+| 3.E.3 | User & Role Admin | `screens/admin/3e3-user-admin.md` |
+| 3.E.4 | Tenant Feature Flags | `screens/admin/3e4-feature-flags.md` |
+| 3.E.5 | Basic Reports | `screens/admin/3e5-reports.md` |
+| 3.E.6 | Audit Log Browser | `screens/admin/3e6-audit-log.md` |
+| Index | Locked decisions + schema + API endpoints | `screens/admin/README.md` |
+| Migration | Admin extensions consolidated | `migrations/022_admin_extensions.sql` |
+
+### Phase 3.D deliverables (locked, this milestone)
+
+| Screen | Doc |
+|---|---|
+| 3.D.1 | Purchase Invoice List | `screens/finance/3d1-purchase-list.md` |
+| 3.D.2 | Purchase Invoice Create/Edit | `screens/finance/3d2-purchase-edit.md` |
+| 3.D.3 | Return/Exchange Initiate | `screens/finance/3d3-return-initiate.md` |
+| 3.D.4 | Return/Exchange Process | `screens/finance/3d4-return-process.md` |
+| 3.D.5 | Customer Account Detail | `screens/finance/3d5-customer-account.md` |
+| 3.D.6 | Supplier Account Detail | `screens/finance/3d6-supplier-account.md` |
+| 3.D.7 | Payment Collection | `screens/finance/3d7-payments.md` |
+| Index | Locked decisions + schema + API endpoints | `screens/finance/README.md` |
+| Migration | Finance extensions consolidated | `migrations/021_finance_extensions.sql` |
+
+### Phase 3.C deliverables (locked, this milestone)
+
+| Screen | Doc |
+|---|---|
+| 3.C.1 | Stock List | `screens/inventory/3c1-stock-list.md` |
+| 3.C.2 | Stock Movement History | `screens/inventory/3c2-movements.md` |
+| 3.C.3 | Stock Transfer | `screens/inventory/3c3-transfer.md` |
+| 3.C.4 | Stock Count Session | `screens/inventory/3c4-count.md` |
+| 3.C.5 | Stock Adjustment | `screens/inventory/3c5-adjustment.md` |
+| Index | Locked decisions + schema + API endpoints | `screens/inventory/README.md` |
+| ADR-020 | Correlation ID Pattern | `adr/020-correlation-id-pattern.md` |
+| Migration | Inventory extensions consolidated | `migrations/020_inventory_extensions.sql` |
+
+### Phase 3.B deliverables (locked)
 
 | Screen | Doc |
 |---|---|
@@ -63,7 +104,7 @@ This roadmap turns the locked architecture into an executable plan.
 | ADR-019 | Display Name Composition Strategy | `adr/019-display-name-composition.md` |
 | Migration | Catalog extensions consolidated | `migrations/019_catalog_extensions.sql` |
 
-### Phase 3.A deliverables (locked, this milestone)
+### Phase 3.A deliverables (locked)
 
 | Screen | Doc |
 |---|---|
@@ -77,332 +118,229 @@ This roadmap turns the locked architecture into an executable plan.
 | Index | Locked decisions catalog + schema additions + API endpoints | `screens/pos/README.md` |
 | Migration | POS extensions consolidated | `migrations/018_pos_extensions.sql` |
 
-### Phase 6 deliverables (locked, this milestone)
+---
 
-| Sub-phase | Topic | Doc |
+## Phase 3 final summary
+
+**31 screens designed and locked across 5 sub-phases:**
+
+| Sub-phase | Theme | Aggregate domains |
 |---|---|---|
-| 6.A | Backend core (Java 21, Spring Boot 4, JPA+JOOQ, Maven, Flyway) | `tech-stack/6a-backend-core.md` |
-| 6.B | Persistence (TenantAwareTransactionManager, RLS integration, JSONB typing) | `tech-stack/6b-persistence.md` |
-| 6.C | Modular monolith (10 modules, service families, ArchUnit) | `tech-stack/6c-modular-monolith.md` |
-| 6.D | Auth & security (JWT, HMAC pepper, Caffeine, Bucket4j, MFA-ready) | `tech-stack/6d-auth-security.md` |
-| 6.E | Frontend (Mantine v8, TanStack, ky, Dinero v2, react-hook-form) | `tech-stack/6e-frontend.md` |
-| 6.F | Jobs & documents (ShedLock, Gotenberg, TX1/External/TX2 pattern) | `tech-stack/6f-jobs-documents.md` |
-| 6.G | Observability (Micrometer, Sentry, OTel-ready, 5 dashboards, 9 alerts) | `tech-stack/6g-observability.md` |
-| 6.H | Test stack (Testcontainers, ArchUnit, RLS parametrized, Playwright smoke) | `tech-stack/6h-test-stack.md` |
-| 6.I | DevOps & deploy (€0 MVP: Fly.io + Neon + Cloudflare + GitHub Actions) | `tech-stack/6i-devops-deploy.md` |
+| 3.A POS | Point of sale | Sale, RegisterSession, Payment, Receipt |
+| 3.B Catalog | Product structure | Product, ProductVariant, Attribute, PriceList, MissingItemRequest |
+| 3.C Inventory | Stock authority | StockBalance, StockMovement, Transfer, CountSession, Adjustment |
+| 3.D Financial | Money flow | PurchaseInvoice, Return, Payment, AccountMovement, StoreCreditBalance |
+| 3.E Operational | Admin & audit | CashRegisterSession, ZReport, User, Role, Tenant, AuditEventLog |
 
-New ADRs added in Phase 6:
+**Architectural patterns established across Phase 3:**
 
-- ADR-010 JSONB Typed Records
-- ADR-011 Tenant Context via Spring Security
-- ADR-012 Aggregate Ownership Rules
-- ADR-013 Tenant Resolution Strategy
-- ADR-014 Stateless JWT with DB-backed Refresh Tokens
-- ADR-015 Token Hashing with HMAC-SHA256 Pepper
-- ADR-016 Permission Caching Strategy
-- ADR-017 External I/O Outside Database Transactions
+- **DRAFT → COMMITTED atomicity**: Purchase invoices, transfers (2-phase)
+- **Single-shot immutable**: Adjustments, Z reports
+- **Append-only ledgers**: stock_movements, cash_movements, account_movements, audit_event_log
+- **Correlation ID pattern (ADR-020)**: cross-aggregate event tracing
+- **Server-authoritative pricing/financials**: never trust client computed totals
+- **Three-component financial decomposition**: exchange (returned/new_sale/delta)
+- **Friction-as-safety**: navigation-only routes (not inline edit) for fraud-sensitive ops
+- **Authority-vs-projection disclosure**: explicit UI signals for projection-backed views
+- **Manager PIN override**: closed-set reasons + free-text + 3-fail lockout per (tenant, register_session)
+- **Reason codes are closed sets**: with OTHER + mandatory free-text fallback
+- **Idempotency keys** on every consequential write: 7-day retention
+- **Pessimistic FOR UPDATE canonical order**: aggregate → ledger → balance per Phase 2D
+- **Display name composition Java-side** (ADR-019): never DB function
+- **Audit summary composition Java-side**: consistent with ADR-019
 
-New architecture documentation:
-
-- `architecture/tenant-context-flow.md`
-- `architecture/jsonb-typing-rules.md`
-- `architecture/isolation-levels.md`
-- `architecture/worker-patterns.md` (TX1 / External / TX2)
-- `architecture/event-consumer-categories.md` (internal vs external)
-
-Schema additions:
-
-- `migrations/016_auth_extensions.sql` — user_sessions, password_reset_tokens, users.mfa_*
-- `migrations/017_jobs_extensions.sql` — shedlock
+**Schema additions across Phase 3**: 8+ new tables, ~30 schema modifications, ADRs 018-020 net new in Phase 3.
 
 ---
 
-## Implementation Sprints (MVP)
+## What comes next
 
-Sprint length: 2 weeks. Estimates are placeholders pending team-size confirmation.
+### Phase 4 — Backend architecture detail
 
-### Sprint 0 — Foundations (2 weeks)
+Module-by-module specification of:
+- Aggregate root implementations (Java)
+- Service layer pattern (Application services vs domain services)
+- JPA + JOOQ split (when each)
+- Repository contracts
+- Transaction boundaries
+- Outbox dispatcher details
+- Caffeine cache invalidation patterns
+- Spring Modulith ArchUnit rules per module
 
-Goal: a runnable empty system with auth, multi-tenancy and one trivial CRUD path.
+### Phase 5 — API endpoint catalogue + OpenAPI
 
-- Repo scaffolding: single Maven module with package-per-feature; frontend in `frontend/` subdir.
-- `Dockerfile` (multi-stage, layered jars), `docker-compose.yml` (postgres, gotenberg, mailhog).
-- CI/CD: GitHub Actions (`ci.yml` — arch+unit, integration, frontend, e2e; `release.yml` — tag → GHCR; `deploy.yml` — workflow_dispatch → Fly.io).
-- Flyway migrations through 017 applied; CI gate fails if a new tenant table lacks RLS.
-- ArchUnit baseline rules (20+) + Spring Modulith verify in CI.
-- Spring Security setup: JwtAuthenticationFilter, TenantAwareTransactionManager, SecurityTenantProvider.
-- Authentication endpoints: `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/sessions`.
-- TokenHasher (HMAC-SHA256 with pepper), BCrypt cost=12.
-- MDC context filter (trace_id, tenant_id, user_id, store_id).
-- Outbox table from Phase 2E; OutboxPublisher (@Transactional MANDATORY); OutboxDispatcher (claim-process-finalize); EventConsumer interface with `isInternal()` flag.
-- `processed_events` and `security_audit_log` tables seeded with one no-op consumer.
-- Basic health (`/actuator/health` liveness, readiness, custom OutboxLag + GotenbergHealth).
-- Sentry SDK initialized (no-op DSN); Logback structured JSON; Micrometer Prometheus.
-- Frontend skeleton: Vite + React + TanStack Router + Mantine + ky + Zustand + i18n (Turkish).
-- 3 Playwright smoke tests scaffolded (login, POS open, complete flow assertions).
-- One vertical slice: create Brand (Catalog) end-to-end with RLS proven + outbox event emitted.
+Complete OpenAPI spec for all ~120 endpoints surfaced across Phase 3.
 
-### Sprint 1 — Catalog Core (2 weeks)
+### Phase 7 — Implementation sprints
 
-- Categories (hierarchy, max 5 levels, cyclic-ref guard).
-- Brands, Seasons.
-- Attribute system (colors, sizes, materials, etc.).
-- Products + ProductVariants + ProductVariantBarcodes (scope: INTERNAL / SUPPLIER / GS1_EAN).
-- Variant matrix editor (frontend).
-- Smart code template engine (`PROD-{seq:6}-{category_code}`).
-- Price cipher utility.
-- ProductImages / VariantImages (DocumentStorage adapter).
-- Audit consumer for catalog events.
-
-### Sprint 2 — Inventory Foundation (2 weeks)
-
-- `stock_movements` (append-only, partition-ready).
-- Append-only enforcement: REVOKE UPDATE/DELETE + guard trigger.
-- `stock_balances` projection maintained transactionally.
-- `StockMovementService.record()` — the single writer.
-- WAC engine integrated into IN/OUT movements.
-- Movement type taxonomy fully enumerated.
-- Idempotency for adjustments.
-- Reconciliation job (nightly via ShedLock).
-- Rebuild command (`stock_balances` recomputed from `stock_movements`).
-
-### Sprint 3 — Purchasing (2 weeks)
-
-- Parties unified (customer/supplier/employee).
-- PartyContacts, PartyDocuments.
-- FX context: `currencies`, `fx_rate_sources`, `fx_rates`, `fx_snapshots`.
-- TCMB provider (real implementation); MANUAL provider; HAREM provider skeleton.
-- Tenant FX preference setting.
-- PurchaseInvoice draft → post (atomic: items + stock IN + supplier debt + FX snapshot).
-- PurchaseReturn.
-
-### Sprint 4 — Financial Core (2 weeks)
-
-- `AccountProfile` aggregate.
-- `account_movements` (append-only journal).
-- `account_balances` projection.
-- Payment aggregate (RECEIVED / MADE).
-- PaymentAllocation (auto-FIFO + manual override).
-- Payment reversal (FULL / PARTIAL).
-- Credit limit enforcement.
-- Aging projection (nightly).
-
-### Sprint 5 — POS Sales Hot Path (2.5 weeks)
-
-- Sale aggregate with state machine (DRAFT → AWAITING_PAYMENT → COMPLETED).
-- Service family: SaleLifecycleService, SalePricingService, SalePaymentService, SaleCompletionOrchestrator, SaleVoidService.
-- PaymentAttempts audit trail.
-- Idempotency key handling via `X-Idempotency-Key`.
-- Atomic completion transaction (Sale + items + stock OUT + cash + account + payments + document stub + outbox).
-- Cost snapshot on sale items.
-- CashRegister + RegisterSession (OPEN/CLOSING/CLOSED).
-- Z report number sequence (gap-free, SERIALIZABLE allocator).
-- CashMovements.
-- Abandoned-cart cleanup, idle timeouts, terminal_pending handling.
-- Frontend POS screen: useBarcodeScanner, useHotkeys F1-F12, Dinero math, optimistic UI rules.
-
-### Sprint 6 — Returns and Exchange (2 weeks)
-
-- Return aggregate (DRAFT → COMPLETED, with AWAITING_APPROVAL for high-value/BLIND).
-- RECEIPTED and BLIND modes.
-- Tenant-level blind-return guardrails (FeatureFlags).
-- Cost snapshot rules (RECEIPTED from original; BLIND from current WAC).
-- Refund processing (cash / card reversal / customer balance / debt reduction).
-- Exchange flow (Return + Sale with `exchange_group_id`, two transactions).
-
-### Sprint 7 — Inter-Store Operations & Counts (2 weeks)
-
-- Transfer aggregate with DRAFT → DISPATCHED → RECEIVED.
-- Virtual `IN_TRANSIT` store auto-creation per tenant.
-- Loss reason codes (`LOST_IN_TRANSIT`, etc.).
-- CountSession with snapshot + variance formula (REPEATABLE READ isolation).
-- StockAdjustment.
-- Low-stock alerts.
-
-### Sprint 8 — Pricing, Documents, Reporting Scaffolding (2 weeks)
-
-- PriceList + VariantPrice (append-only with EXCLUDE constraint).
-- PricingService.getEffectivePrice() with caching.
-- Document workers (SaleDocumentWorker, ReturnDocumentWorker, etc.) using TX1/External/TX2 pattern.
-- Thymeleaf document templates (sale-receipt, sale-invoice, return-receipt, z-report).
-- Gotenberg integration (sidecar container).
-- DocumentStorage LocalFS implementation.
-- First reporting projections: daily_sales_summary, top_selling_variants, stock_position_summary.
-- Materialized view refresh strategy (CONCURRENTLY).
-
-### Sprint 9 — UX Polish, Operational Tools (2 weeks)
-
-- Admin console: tenant management, feature flags.
-- Manager override flows (credit limit, blind return, register reopen — feature-flag-gated).
-- Backup runbook executed (GitHub Actions workflow → R2).
-- Migration import tooling (Excel → catalog/parties).
-- Receipt and invoice templates polished.
-- Hardware setup wizards.
-
-### Sprint 10 — Hardening and Beta (2.5 weeks)
-
-- Load testing (sale-completion throughput per tenant) — manual benchmarks; k6 deferred to v1.1+.
-- Chaos testing (network partition during sale completion; verify recovery).
-- RLS test suite (cross-tenant leakage parametrized across all 45+ tables).
-- Idempotency test suite (POS retry storms).
-- Reconciliation test suite (ledger ↔ projection drift).
-- Onboarding wizard for first beta tenants.
-- Documentation for users (admin guide, cashier quickstart).
-- Restore drill executed once (pg_dump backup → fresh Neon branch → verify).
-
-### Sprint 11 — Beta Stabilisation (2 weeks)
-
-- Real-tenant feedback cycle.
-- Bug fixes and UX iteration.
-- e-Belge provider decision finalized; integration stub.
-- Performance tuning based on real workloads.
-- First paying customer migration trigger evaluation (Hetzner CX22 + Neon Pro).
-
-**End of MVP** — typically 12 calendar weeks of engineering work.
+12-sprint Claude Code-driven implementation plan with milestone deliverables.
 
 ---
 
-## v1.0.x / v1.1+ Triggered Upgrades
+## ADRs to date
 
-### Infrastructure (cost-driven, see Phase 6.I)
-
-| Trigger | Action | Monthly cost |
+| # | Topic | Phase |
 |---|---|---|
-| First paying customer | Migrate backend → Hetzner CX22; DB → Neon Pro | ~€25 |
-| 3 paying customers | Upgrade to Hetzner CCX13; add Sentry self-host | ~€40 |
-| 10 paying customers | Hetzner CCX23 + Sentry Pro + Prometheus/Grafana/Loki stack | ~€100 |
-| 25 paying customers | Multi-instance backend + staging environment | ~€200 |
-| Multi-region need | Cloudflare hybrid arch evaluation | (v2) |
-
-### Operational
-
-| Trigger | Item |
-|---|---|
-| Multi-instance enabled | Per-tenant ShedLock partitioning |
-| Multi-instance enabled | Permission cache distributed invalidation (LISTEN/NOTIFY) |
-| Multi-instance enabled | Pre-deploy Flyway migration step (decoupled from app startup) |
-| Multi-instance enabled | Blue-green deployment via Fly.io / Caddy |
-| Java 25 stable + virtual threads validated | Migrate from Java 21 to Java 25 |
-| Java 25 + virtual threads | Replace SecurityContext propagation with `ScopedValue` |
-| 50+ active tenants | Per-tenant scheduled job parallelization |
-| First annual pepper rotation | Implement versioned token pepper (`v1:...`, `v2:...`) |
-| Audit log > 1 GB | Audit log partitioning (monthly partitions) |
-| Outbox > 5 GB | Outbox table partitioning + archival to S3 |
-| Self-hosted Sentry preferred | Migrate from Sentry SaaS to self-hosted (data sovereignty) |
-| OpenTelemetry collector deployed | Switch OTLP exporter from noop to real |
-| Spring Boot major version | Boot 5 evaluation (when released) |
-| First paying customer | Register `.com.tr` domain; wildcard SSL |
-| First paying customer | Argon2id migration for password hashes |
-| Wildcard SSL ready | Subdomain-based tenant resolution (per ADR-013) |
-| Storage > 8 GB | Migrate document storage LocalFS → R2/S3 |
-| Storage migrated to S3 | Switch document downloads to signed URLs |
-
-### Product features
-
-#### v1.1 (3–6 months after launch)
-
-- Campaigns / promotions / BOGO / coupons.
-- Loyalty points and gift cards.
-- Wholesale and VIP price lists.
-- Commission engine.
-- ABC analysis, turnover, dead-stock analytics.
-- Reorder suggestions.
-- e-Arşiv / e-Fatura full integration.
-- Bank account reconciliation, POS/card reconciliation.
-- Async variant generation (background job for >200-variant products).
-- FxRate table partitioning.
-- Offline POS (the hardest single feature; dedicated sub-roadmap).
-- MFA activation (TOTP, schema already deployed).
-- Rate limiting moved from in-memory Bucket4j → PostgreSQL bridge for multi-instance.
-- Tenant tier-based metric tagging (low cardinality).
-- k6 performance test suite.
-- English UI translation (i18n already in place).
-- Mantine v9 evaluation when released.
-- Vite major version upgrade when stable.
-
-#### v2 (12 months+)
-
-- Multi-currency cash registers.
-- Jewellery module (gramaj / ayar / live gold rates / piece-level serials / workmanship).
-- Cafe / restaurant module (recipes, tables, KDS, hesap bölme).
-- Mobile companion app (owner dashboard + cashier mobile POS).
-- e-commerce integrations (Trendyol, Hepsiburada, Shopify).
-- Accounting software exports (Logo, Mikro).
-- Multi-region deployment, data residency options.
-- Custom report builder.
-- Zone/bin-scoped parallel counts.
-- Maven multi-module structure split.
-- Microservices extraction (only if proven scale need).
+| 001 | Multi-tenancy pattern (shared DB + RLS) | 1 |
+| 002 | Append-only ledger discipline | 2B |
+| 003 | WAC cost methodology | 2B |
+| 004 | State machine enforcement | 2C |
+| 005 | Outbox pattern | 2D |
+| 006 | Domain event versioning | 2D |
+| 007 | RLS context propagation | 2D |
+| 008 | Idempotency key strategy | 2D |
+| 009 | Saga compensation policy | 2D |
+| 010 | Java + Spring Boot stack | 6.A |
+| 011 | JPA + JOOQ hybrid | 6.B |
+| 012 | Tenant-aware transaction manager | 6.B |
+| 013 | JWT HS256 + BCrypt 12 | 6.C |
+| 014 | Frontend stack | 6.E |
+| 015 | DocumentStorage abstraction | 6.F |
+| 016 | Spring @Scheduled + ShedLock | 6.G |
+| 017 | External I/O outside transactions | (overlay) |
+| 018 | Pricing Resolution Strategy | 3.B |
+| 019 | Display Name Composition Strategy | 3.B |
+| **020** | **Correlation ID Pattern** | **3.C** |
 
 ---
 
-## Quality Gates
+## Phase 3.F — Pending refinements (apply at Phase 4 kickoff)
 
-Each sprint must pass these gates before merging:
+> **Status:** Deferred — apply during first Phase 4 delivery
+> **Source:** Phase 3.E review correction notes
+> **Reason for deferral:** corrections affect 5 already-shipped spec files; batching them with Phase 4 backend module work avoids re-touching delivery boundaries
 
-| Gate | Check |
-|---|---|
-| RLS coverage | Every new tenant table has RLS policy + cross-tenant leak test (parametrized) |
-| Append-only enforcement | New ledger tables enforce immutability (UPDATE/DELETE raises) |
-| Idempotency (write side) | Every state-changing endpoint affecting money/stock has idempotency test |
-| Idempotency (consumer side) | Every outbox consumer writes `processed_events` row in same TX as projection; tested under duplicate delivery |
-| Atomic transactions | Hot-path operations have "kill mid-transaction" test verifying clean state |
-| Outbox envelope | Every produced event conforms to envelope (`domain-events.md`); CI lint validates schema |
-| Outbox event coverage | Every cross-context state change has an outbox event with consumer (or documented stub) |
-| Stream separation | Security events go to `security_audit_log`, not `outbox_events` |
-| Replay / rebuild | Every projection has `rebuild_*` command exercised in test |
-| DLQ handling | New failure modes map to `dead_letter_reason`; DLQ size/age monitored |
-| Audit | Critical operations produce dedicated audit events |
-| Migration linting | CI rejects migrations without tenant_id + RLS for tenant tables |
-| External I/O outside TX | ArchUnit rule (ADR-017) catches HTTP/storage clients inside `@Transactional` |
-| Worker pattern | New workers use 3-bean ClaimService/Generator/Finalizer split |
-| Aggregate ownership | ArchUnit rule (ADR-012) catches cross-module repository access |
-| Service family discipline | LifecycleServices do not call other modules' APIs |
-| Orchestrator size | CompletionOrchestrators ≤ 5 public methods and ≤ 800 LOC |
-| ArchUnit | All 20+ rules pass (CI gate) |
-| Spring Modulith | `ApplicationModules.verify()` passes (CI gate) |
-| JSONB typing | Core-domain JSONB columns use typed records, not raw Map (ArchUnit) |
-| PII discipline | Log capture tests verify email/name/phone never appear in app logs |
-| Coverage | Backend 60% overall, 80% in sales/inventory/financial; Frontend 60% overall, 80% in pos/auth |
-| Playwright smoke | 3+ E2E smoke tests pass on every release candidate |
+These are NOT new design decisions. They are wording/scope clarifications and explicit invariants for ambiguities surfaced during Phase 3.E review. Each correction is small but operationally important.
+
+### 3.F.1 — Cash Register Close: invert mental model
+
+**File to update:** `docs/screens/admin/3e2-register-close.md`
+
+**Change:** Replace `cash_removed_amount` field with `remaining_float_amount` (kasada bırakılacak nakit).
+
+**Rationale:** Cashier mental model is "what stays in the drawer," not "what I'm taking out." Removed amount = expected_cash − remaining_float (system computes). Eliminates ambiguity between safe deposit / bank transfer / next-day float — all of which are operationally distinct but undifferentiated in MVP.
+
+**Schema impact:** rename column in `cash_movements` for CLOSING_DEPOSIT entries; migration patch in Phase 4 kickoff. Internal_label `CLOSING_DEPOSIT` retained (movement type semantically unchanged).
+
+**UI change:** label "Bankaya yatırılacak (opsiyonel)" → "Kasada bırakılacak nakit"; computed display "Çıkacak nakit: ₺X.XXX" derived.
+
+### 3.F.2 — Z report PDF byte-determinism
+
+**File to update:** `docs/screens/admin/3e2-register-close.md`
+
+**Add explicit invariant:** Z report PDF generation MUST NOT embed render timestamps, generation request IDs, or any non-payload-derived dynamic content. Otherwise "same payload → identical bytes" claim fails.
+
+**Implementation rule:** PDF generator (Phase 6.F worker) reads ONLY `snapshot_payload` JSONB. Any timestamp in the rendered PDF must come FROM the payload (e.g. session.closed_at) — never from `now()` at render time.
+
+**Test requirement (Phase 7):** byte-identical reprint test in CI — generate twice from same payload, assert SHA256 equal.
+
+### 3.F.3 — User role model: deny semantics explicitly absent
+
+**File to update:** `docs/screens/admin/3e3-user-admin.md`
+
+**Add explicit invariant:**
+```
+effective_permissions = UNION(all assigned role permissions)
+```
+
+No deny rules. No override semantics. Multi-role is purely additive in MVP. This is a documented constraint, not an oversight.
+
+**v1.1+ consideration:** if business needs role denial rules (e.g. "AUDITOR explicitly blocks write permissions even if combined with STORE_MANAGER"), introduce a separate `role_deny_rules` table with explicit precedence — not implicit role ordering.
+
+**Rationale:** prevents future debate "if a user is CASHIER + AUDITOR, what wins?" with the clear MVP answer: both grant; nothing denies. No surprise.
+
+### 3.F.4 — Tenant settings: operation-start snapshot
+
+**File to update:** `docs/screens/admin/3e4-feature-flags.md`
+
+**Sharpen the existing statement:** "Changes effective immediately for new operations; in-flight operations use captured config at start" needs explicit linkage to specific flows.
+
+**Add explicit rule:**
+
+| Setting | When captured | Where snapshotted |
+|---|---|---|
+| `requires_reason_above_pct` | Sale aggregate creation (open draft) | sale.threshold_snapshot |
+| `max_cart_discount_pct_default` | Sale draft creation | sale.cart_discount_limit_snapshot |
+| `max_line_discount_pct_default` | Sale draft creation | sale.line_discount_limit_snapshot |
+| `return_window_days` | Return.initiate() | return.window_snapshot |
+| `adjustment_large_threshold` | Adjustment.create() | adjustment.large_threshold_snapshot |
+| `cash_variance_tolerance` | Session.open() | session.variance_tolerance_snapshot |
+| `cash_variance_large_threshold` | Session.open() | session.variance_large_threshold_snapshot |
+
+**Rationale:** mid-operation policy change must not retroactively invalidate in-flight work. Open POS sale with %30 discount mid-flow must not break when manager tightens cart_discount to %10 in another tab. Snapshot at operation start guarantees determinism.
+
+**Schema impact:** add snapshot columns to: `sales`, `returns`, `adjustments`, `cash_register_sessions`. Phase 4 kickoff migration.
+
+**Pricing decisions excluded:** pricing already snapshot-frozen per ADR-018 (line.unit_price_gross frozen at add-to-cart). This adds policy snapshotting alongside.
+
+### 3.F.5 — Reports: refresh button bypasses cache
+
+**File to update:** `docs/screens/admin/3e5-reports.md`
+
+**Add explicit behavior:** `[⟳ Yenile]` button issues request with `Cache-Control: no-cache` header (or `?fresh=true` query param). Server bypasses 5-min Caffeine cache for explicit refresh requests; updates cache with new result.
+
+**UX impact:** "Veriler: 14:32'de yenilendi" timestamp updates to now after refresh click.
+
+**Rationale:** stale cache hit on refresh click is a worse UX than slightly slow refresh. Cache is for unprompted views; explicit user intent bypasses.
+
+### 3.F.6 — Audit log retention policy
+
+**File to update:** `docs/screens/admin/3e6-audit-log.md`
+
+**Add explicit policy:** Audit events retained **minimum 5 years** for tenant. No deletion endpoint. No automatic purge MVP.
+
+**Rationale:** Turkish tax authority (VUK) and commercial code require 5-year retention for accounting records. Audit log feeds compliance investigation. Adding retention policy later requires backfill — adding it now (even with no purge job) sets the contract.
+
+**Storage implication:** ~1-5 MB/store/year audit events at typical retail volume. 5-year × 100 stores = 500MB-2.5GB. Negligible. PostgreSQL TOAST handles JSONB payloads well.
+
+**v1.1+ consideration:** archival tier (Neon → S3 Glacier-equivalent) for events > 2 years old. MVP keeps everything hot.
+
+### 3.F.7 — STORE_MANAGER editing scope: explicit allowlist
+
+**File to update:** `docs/screens/admin/3e3-user-admin.md`
+
+**Replace ambiguous "limited fields" with explicit matrix:**
+
+| Operation | STORE_MANAGER | SUPER_ADMIN |
+|---|---|---|
+| Activate/deactivate cashier (own store) | ✓ | ✓ |
+| Reset cashier password | ✗ | ✓ |
+| Reset manager PIN (own store users) | ✓ | ✓ |
+| Edit user display_name (own store users) | ✓ | ✓ |
+| Change user email | ✗ | ✓ |
+| Assign roles | ✗ | ✓ |
+| Assign stores | ✗ | ✓ |
+| Create user | ✗ | ✓ |
+| Delete user | ✗ (deactivate only) | ✗ (deactivate only) |
+
+**Rationale:** STORE_MANAGER scope is operational user lifecycle for own store (activate/deactivate/PIN reset). Identity (email) and authorization (role/store assignment) are SUPER_ADMIN territory. This prevents privilege escalation via "STORE_MANAGER promotes self to SUPER_ADMIN" attack surface.
+
+**Server enforcement:** field-level permission check in PATCH endpoint; not just route-level. STORE_MANAGER PATCH with `roles` field in body → 403.
+
+### 3.F.8 — Audit log browser: PII masking for non-AUDITOR
+
+**File to update:** `docs/screens/admin/3e6-audit-log.md`
+
+**Add explicit rule:** When `audit.view` granted to STORE_MANAGER (tenant config option), PII fields in event payload masked unless user also has `parties.view_full_phone` / `parties.view_full_email`.
+
+**Masking pattern (consistent with 3.A.3):**
+- Phone: `0532 *** 1234` (first 4 + last 4)
+- Email: `a***t@example.com` (first char + last char of local-part)
+- Full name: NOT masked (operational necessity; "Ayşe Y." truncation only by length)
+
+**AUDITOR + SUPER_ADMIN see full PII** (these roles by definition have full data access).
+
+**Rationale:** audit screen shows sensitive event payloads; STORE_MANAGER browsing own-store events doesn't need to see customer phones in plain text. Defense-in-depth: tenant data exposure scope follows least-privilege.
+
+**Implementation:** `AuditEventSummaryComposer` and raw-JSON expansion both apply masking transform based on viewer's effective permissions.
 
 ---
 
-## Risks and Mitigations
+## Phase 3 status — kapanış
 
-| Risk | Mitigation |
-|---|---|
-| RLS misconfiguration leaks tenant data | CI lint + parametrized cross-tenant test suite + sentinel UUID defense |
-| Outbox publisher falls behind | Monitoring on publisher lag; alert on PENDING > 1000 events |
-| Dead-letter queue accumulation | Monitoring; `OutboxEventDeadLettered` events drive alerts |
-| Ledger projection drift | Nightly reconciliation; **no auto-rebuild** — human triages |
-| Saga partial outcomes | Process-instance state in admin dashboards; manual reconciliation queue |
-| Consumer non-idempotency | Mandatory `processed_events` write in same TX; tested under duplicate delivery |
-| Event-schema drift | Schema validation producer+consumer; mismatch → DLQ with `SCHEMA_MISMATCH` |
-| POS feels slow due to lock contention | Canonical lock order + targeted indexes; load testing |
-| External I/O blocks DB pool | TX1/External/TX2 pattern (ADR-017); ArchUnit rule; pool monitoring |
-| Token pepper compromise | Force-logout-all runbook documented; versioned pepper roadmap entry |
-| Sentry SaaS retention loss (30d) | Critical issues triaged within 24-48h; long-term audit lives in DB |
-| Neon Free tier 0.5 GB exhaustion | Outbox PUBLISHED cleanup nightly; audit partitioning v1.1+; upgrade trigger documented |
-| Fly.io outage during pilot | Migration runbook to Hetzner CX22 ready; weekly backup off-site on R2 |
-| e-Belge integration delays | Schema decoupled from provider; submission async; manual fallback documented |
-| Scope creep (sectoral expansion in MVP) | Strategy locked: clothing/boutique only for MVP |
-| PII anonymization regret | ADR-009 reversibility opt-in with contractual gating |
+Phase 3 design phase is closed. 31 screens, 5 sub-phases, 3 ADRs net new (018-020).
 
----
+Remaining refinements (3.F.1-3.F.8) are surgical clarifications, not architectural rework. They will be applied as part of the first Phase 4 delivery, alongside backend module specifications — which will reference these clarified specs anyway.
 
-## What Is Explicitly Out of Scope for MVP
+**Next milestone**: Phase 4 — Backend architecture detail. Will include the 8 refinement patches above as part of its first deliverable.
 
-- Offline POS (v1.1).
-- Mobile applications (v2).
-- e-Commerce marketplace integrations (v2).
-- Multi-currency cash registers (v2).
-- Jewellery / cafe modules (v2).
-- Custom report builder (v2).
-- Multi-region deployment (v2 if ever).
-- Real-time inventory sync across tenants (v2 if ever).
-- Server-side rendering / Next.js (not needed).
-- Microservices extraction (revisit only on proven scale need).
-- Kubernetes (docker-compose / Fly.io sufficient through 25-customer scale).
-
-Carrying these explicitly prevents architecture creep during MVP execution.
